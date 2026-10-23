@@ -1,0 +1,1 @@
+ALTER TABLE "pagos_socio" ADD COLUMN "tipo" text DEFAULT 'me_tienes' NOT NULL;

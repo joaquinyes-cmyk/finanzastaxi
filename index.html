@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#141414" />
+  <title>Finanzas Taxi</title>
+  <style>
+    :root {
+      --amarillo: #f5c400; --amarillo-osc: #b38f00; --negro: #141414; --gris: #6b6b6b;
+      --fondo: #faf8f2; --verde: #1f8a4c; --rojo: #c0392b; --azul: #1f5fa8;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--negro); }
+    header { background: var(--negro); color: #fff; padding: 1rem; border-bottom: 6px solid var(--amarillo); }
+    header .fila { max-width: 720px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    header h1 { margin: 0; font-size: 1.3rem; }
+    header input { font-size: 1rem; padding: .45rem .6rem; border-radius: 8px; border: 0; }
+    main { max-width: 720px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+
+    .panel { display: grid; grid-template-columns: repeat(2, 1fr); gap: .75rem; }
+    @media (min-width: 560px) { .panel { grid-template-columns: repeat(3, 1fr); } }
+    .boton {
+      display: flex; flex-direction: column; align-items: flex-start; gap: .35rem;
+      padding: 1rem; min-height: 96px; border: 0; border-radius: 14px; cursor: pointer;
+      font: inherit; text-align: left; color: var(--negro); background: #fff;
+      box-shadow: 0 3px 0 rgba(0,0,0,.12), 0 1px 4px rgba(0,0,0,.06);
+    }
+    .boton:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.12); }
+    .boton .nombre { font-weight: 700; font-size: 1rem; }
+    .boton .valor { font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .boton.ingreso { border-left: 6px solid var(--verde); }
+    .boton.efectivo { border-left: 6px solid #2e9d5b; }
+    .boton.pago-tarjeta { border-left: 6px solid #7b4fc9; }
+    .boton.gasto { border-left: 6px solid var(--rojo); }
+    .boton.banco { border-left: 6px solid var(--azul); }
+    .boton.total { background: var(--negro); color: #fff; }
+    .boton.mitad { background: var(--amarillo); box-shadow: 0 3px 0 var(--amarillo-osc); }
+    .boton.saldo { border-left: 6px solid #ccc; }
+    .boton.saldo.activo { border-left-color: var(--amarillo); background: #fff8d6; }
+    .boton.saldo:not(.activo) .valor { color: #aaa; }
+
+    dialog { border: 0; border-radius: 16px; padding: 0; width: min(420px, 92vw); }
+    dialog::backdrop { background: rgba(0,0,0,.45); }
+    dialog form, dialog .contenido { display: grid; gap: .8rem; padding: 1.25rem; }
+    dialog h2 { margin: 0; font-size: 1.15rem; }
+    label { display: grid; gap: .3rem; font-size: .9rem; color: var(--gris); }
+    input { font-size: 1.05rem; padding: .7rem; border: 1px solid #ddd; border-radius: 10px; }
+    .acciones { display: flex; gap: .5rem; }
+    .acciones button { flex: 1; padding: .8rem; font-size: 1rem; border-radius: 10px; border: 0; cursor: pointer; font-weight: 600; }
+    .principal { background: var(--negro); color: #fff; }
+    .secundario { background: #eee; }
+    .detalle { margin: 0; color: #333; line-height: 1.5; }
+
+    #mensaje { min-height: 1.2rem; margin: .9rem 0 0; font-size: .95rem; }
+    #mensaje.ok { color: var(--verde); } #mensaje.error { color: var(--rojo); }
+    h3 { font-size: 1rem; margin: 1.75rem 0 .5rem; }
+    ul { list-style: none; padding: 0; margin: 0; }
+    li { background: #fff; border-radius: 10px; padding: .7rem .9rem; margin-bottom: .5rem; display: flex; align-items: center; gap: .75rem; }
+    li .info { flex: 1; }
+    li .info small { display: block; color: var(--gris); }
+    li .monto { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+    li .monto.Ingreso { color: var(--verde); }
+    li .monto.Efectivo { color: #2e9d5b; }
+    li .monto.Tarjeta { color: #7b4fc9; }
+    li .monto.Gasto { color: var(--rojo); }
+    li .monto.banco { color: var(--azul); }
+    li .borrar { border: 0; background: none; font-size: 1.1rem; cursor: pointer; color: #999; padding: .25rem; }
+    .vacio { color: var(--gris); }
+    .btn-registrar { width: 100%; margin-top: .75rem; padding: 1rem; border: 0; border-radius: 14px; background: var(--verde); color: #fff; font: inherit; font-size: 1.1rem; font-weight: 800; letter-spacing: .05em; cursor: pointer; }
+    .btn-registrar:disabled { opacity: .6; cursor: wait; }
+    .ayuda-registrar { margin: .35rem 0 0; font-size: .85rem; color: #666; text-align: center; }
+    .btn-recibo { width: 100%; margin-top: .75rem; padding: .85rem; border: 2px dashed #bbb; border-radius: 14px; background: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    li .recibo-item { border: 0; background: none; font-size: 1.05rem; cursor: pointer; padding: .25rem; }
+    .recibo { font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; font-size: .9rem; background: #fffef8; border: 1px solid #e6e1cf; border-radius: 10px; padding: 1rem; color: #111; }
+    .recibo h2 { font-family: system-ui, sans-serif; text-align: center; font-size: 1.1rem; margin: 0 0 .2rem; }
+    .recibo .sub { text-align: center; color: var(--gris); margin: 0 0 .75rem; font-size: .8rem; }
+    .recibo .linea { display: flex; justify-content: space-between; gap: 1rem; padding: .15rem 0; }
+    .recibo .linea span:last-child { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .recibo .sep { border-top: 1px dashed #bbb; margin: .5rem 0; }
+    .recibo .fuerte { font-weight: 800; }
+    .recibo .nota { color: var(--gris); font-size: .8rem; padding-left: .5rem; }
+    .recibo .pie { text-align: center; color: var(--gris); font-size: .75rem; margin: .75rem 0 0; }
+    .acciones-recibo { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .acciones-recibo button { padding: .75rem; font: inherit; font-weight: 600; border: 0; border-radius: 10px; cursor: pointer; }
+    .whatsapp { background: #25d366; color: #fff; }
+    .gmail { background: #ea4335; color: #fff; }
+    @media print {
+      body * { visibility: hidden !important; }
+      #dlg-recibo, #dlg-recibo #recibo, #dlg-recibo #recibo * { visibility: visible !important; }
+      #dlg-recibo { position: absolute; inset: 0; width: 100%; max-width: none; margin: 0; box-shadow: none; }
+      #dlg-recibo::backdrop { display: none; }
+      #recibo { border: 0; max-width: 80mm; margin: 0 auto; }
+    }
+    .tarjeta { background: #fff; border-radius: 16px; padding: 1.25rem; box-shadow: 0 1px 4px rgba(0,0,0,.08); max-width: 420px; margin: 1rem auto; }
+    .tarjeta form { display: grid; gap: .8rem; }
+    .tarjeta h2 { margin: .25rem 0 0; font-size: 1.15rem; }
+    .pestanas { display: flex; gap: .25rem; background: #f0eee6; border-radius: 10px; padding: .25rem; margin-bottom: .75rem; }
+    .pestana { flex: 1; border: 0; background: none; padding: .6rem; border-radius: 8px; font: inherit; font-weight: 600; cursor: pointer; color: var(--gris); }
+    .pestana.activa { background: #fff; color: var(--negro); box-shadow: 0 1px 2px rgba(0,0,0,.1); }
+    .ancho { width: 100%; padding: .85rem; font-size: 1rem; border-radius: 10px; border: 0; cursor: pointer; font-weight: 600; }
+    .enlace { background: none; border: 0; color: var(--azul); font: inherit; font-size: .9rem; cursor: pointer; padding: 0; }
+    #auth-mensaje { min-height: 1.2rem; font-size: .95rem; margin: .75rem 0 0; }
+    #auth-mensaje.ok { color: var(--verde); } #auth-mensaje.error { color: var(--rojo); }
+    .usuario { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: 1rem; font-size: .9rem; color: var(--gris); }
+    .usuario strong { color: var(--negro); word-break: break-all; }
+    .botones-cuenta { display: flex; gap: .4rem; }
+    .chico { border: 0; border-radius: 8px; padding: .45rem .7rem; font: inherit; font-size: .85rem; cursor: pointer; }
+    .dos-columnas { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .dos-columnas input { min-width: 0; width: 100%; }
+    .marca-manual { font-size: .7rem; font-weight: 600; color: var(--amarillo-osc); }
+    .ayuda-saldo { margin: 0; font-size: .8rem; color: var(--gris); }
+    #saldo-mensaje { margin: 0; min-height: 1rem; font-size: .85rem; color: var(--rojo); }
+    .historico { max-height: 60vh; overflow-y: auto; }
+    .historico li { background: #f6f4ec; cursor: pointer; flex-wrap: wrap; }
+    .historico li .saldo-h { width: 100%; font-size: .8rem; color: var(--gris); }
+    .boton .hoy { font-size: .75rem; color: var(--gris); }
+    .abonos { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+    .boton.abono { min-height: 72px; justify-content: center; color: #fff; }
+    .boton.abono .nombre { font-size: 1.05rem; letter-spacing: .03em; }
+    .boton.abono small { font-size: .78rem; opacity: .9; }
+    .boton.te-he-pagado { background: #8a5a00; box-shadow: 0 3px 0 #5c3c00; }
+    .boton.me-has-pagado { background: var(--verde); box-shadow: 0 3px 0 #145c33; }
+    .total-grande { margin: 0; font-size: 2rem; font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+    .fila-input { display: flex; gap: .5rem; align-items: end; }
+    .fila-input label { flex: 1; }
+    .fila-input input { width: 100%; min-width: 0; }
+    .fila-input button { padding: .75rem .9rem; border: 0; border-radius: 10px; font: inherit; font-weight: 600; cursor: pointer; }
+    #lista-pagos { max-height: 30vh; overflow-y: auto; }
+    #lista-pagos li { background: #f6f4ec; font-size: .9rem; }
+    #mt-mensaje { margin: 0; min-height: 1rem; font-size: .85rem; color: var(--rojo); }
+    .aviso-dia { margin: 0 0 1rem; padding: .7rem .9rem; border-radius: 10px; background: #fff8d6; border-left: 6px solid var(--amarillo); font-size: .9rem; display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    .btn-mes { width: 100%; margin-top: .75rem; padding: .9rem; border: 0; border-radius: 14px; background: var(--negro); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+    #mes-mensaje { margin: 0; min-height: 1rem; font-size: .85rem; color: var(--rojo); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="fila">
+      <h1>🚕 Finanzas Taxi</h1>
+      <input id="fecha" type="date" aria-label="Día de la jornada" title="Día de la jornada: elige un día anterior para cargarlo" hidden />
+    </div>
+  </header>
+
+  <main id="auth" hidden>
+    <div class="tarjeta">
+      <div class="pestanas" role="tablist">
+        <button type="button" class="pestana activa" data-modo="login">Entrar</button>
+        <button type="button" class="pestana" data-modo="signup">Crear cuenta</button>
+      </div>
+      <form id="form-auth">
+        <h2 id="auth-titulo">Entrar a tu cuenta</h2>
+        <div id="campos-registro" class="dos-columnas" hidden>
+          <label>Nombre
+            <input name="nombre" type="text" autocomplete="given-name" maxlength="60" />
+          </label>
+          <label>Apellido
+            <input name="apellido" type="text" autocomplete="family-name" maxlength="60" />
+          </label>
+        </div>
+        <label>Correo electrónico
+          <input name="email" type="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </label>
+        <label id="campo-password">Contraseña
+          <input name="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" minlength="6" required />
+        </label>
+        <button class="principal ancho" type="submit" id="auth-enviar">Entrar</button>
+        <button class="enlace" type="button" id="olvide">¿Olvidaste tu contraseña?</button>
+      </form>
+      <form id="form-nueva" hidden>
+        <h2>Nueva contraseña</h2>
+        <label>Escribe tu nueva contraseña
+          <input name="password" type="password" autocomplete="new-password" minlength="6" required />
+        </label>
+        <button class="principal ancho" type="submit">Guardar contraseña</button>
+      </form>
+      <p id="auth-mensaje"></p>
+    </div>
+  </main>
+
+  <main id="app" hidden>
+    <div class="usuario">
+      <span>👤 <strong id="usuario-email"></strong></span>
+      <span class="botones-cuenta">
+        <button type="button" class="secundario chico" id="descargar">⬇️ Descargar copia</button>
+        <button type="button" class="secundario chico" id="salir">Salir</button>
+      </span>
+    </div>
+    <div class="aviso-dia" id="aviso-dia" hidden>
+      <span>📅 Cargando un día anterior: <strong id="aviso-dia-fecha"></strong></span>
+      <button type="button" class="secundario chico" id="volver-hoy">Volver a hoy</button>
+    </div>
+    <section class="panel">
+      <button class="boton efectivo" data-registrar="Efectivo" type="button">
+        <span class="nombre">💶 Efectivo</span><span class="valor" id="v-efectivo">0,00</span>
+      </button>
+      <button class="boton pago-tarjeta" data-registrar="Tarjeta" type="button">
+        <span class="nombre">💳 Tarjeta</span><span class="valor" id="v-tarjeta">0,00</span>
+      </button>
+      <button class="boton gasto" data-registrar="Gasto" type="button">
+        <span class="nombre">⛽ Gastos</span><span class="valor" id="v-gastos">0,00</span>
+      </button>
+      <button class="boton banco" data-registrar="Ingreso en banco" type="button">
+        <span class="nombre">🏦 Ingreso en banco</span><span class="valor" id="v-banco">0,00</span>
+      </button>
+      <button class="boton total" data-info="total" type="button">
+        <span class="nombre">📊 Total del día</span><span class="valor" id="v-total">0,00</span>
+      </button>
+      <button class="boton saldo" id="b-tetengo" data-saldo="teTengo" type="button" title="Pendiente acumulado hasta que se abone con «Te he pagado»">
+        <span class="nombre">🤝 Te tengo <small class="marca-manual" hidden>✍️ manual</small></span><span class="valor" id="v-tetengo">0,00</span>
+        <span class="hoy" id="h-tetengo">Hoy: 0,00</span>
+      </button>
+      <button class="boton saldo" id="b-metienes" data-saldo="meTienes" type="button" title="Pendiente acumulado hasta que se abone con «Me has pagado»">
+        <span class="nombre">🙋 Me tienes <small class="marca-manual" hidden>✍️ manual</small></span><span class="valor" id="v-metienes">0,00</span>
+        <span class="hoy" id="h-metienes">Hoy: 0,00</span>
+      </button>
+      <button class="boton mitad" data-info="mitad" type="button">
+        <span class="nombre">½ 50%</span><span class="valor" id="v-mitad">0,00</span>
+      </button>
+    </section>
+    <section class="abonos">
+      <button class="boton abono te-he-pagado" data-abono="teTengo" type="button">
+        <span class="nombre">💸 TE HE PAGADO</span><small>Descuenta de «Te tengo»</small>
+      </button>
+      <button class="boton abono me-has-pagado" data-abono="meTienes" type="button">
+        <span class="nombre">💵 ME HAS PAGADO</span><small>Descuenta de «Me tienes»</small>
+      </button>
+    </section>
+    <div class="dos-columnas">
+      <button type="button" class="btn-recibo" id="recibo-dia">🧾 Recibo del día</button>
+      <button type="button" class="btn-recibo" id="ver-historico">📚 Histórico</button>
+    </div>
+    <button type="button" class="btn-registrar" id="registrar-jornada">✅ REGISTRAR</button>
+    <p class="ayuda-registrar">Cierra la jornada actual y comienza una nueva. Para cargar un día anterior, cambia la fecha de arriba.</p>
+    <div class="dos-columnas">
+      <button type="button" class="btn-mes" id="cierre-mes">📅 CIERRE DE MES</button>
+      <button type="button" class="btn-mes" id="resumen-fechas">🗓️ RESUMEN POR FECHAS</button>
+    </div>
+    <p id="mensaje"></p>
+
+    <h3 id="titulo-lista">Registros del día</h3>
+    <ul id="lista"><li class="vacio">Cargando…</li></ul>
+  </main>
+
+  <dialog id="dlg-registro">
+    <form method="dialog" id="form-registro">
+      <h2 id="dlg-titulo">Registrar</h2>
+      <label>Monto
+        <input name="monto" type="number" step="0.01" min="0.01" inputmode="decimal" required />
+      </label>
+      <label>Nota (opcional)
+        <input name="nota" type="text" maxlength="500" />
+      </label>
+      <div class="acciones">
+        <button class="secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="principal" type="submit">Registrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-recibo">
+    <div class="contenido">
+      <div id="recibo" class="recibo"></div>
+      <div class="acciones-recibo">
+        <button type="button" class="principal" id="r-imprimir">🖨️ Imprimir</button>
+        <button type="button" class="whatsapp" id="r-whatsapp">💬 WhatsApp</button>
+        <button type="button" class="gmail" id="r-gmail">📧 Gmail</button>
+        <button type="button" class="secundario" id="r-email">✉️ Email</button>
+        <button type="button" class="secundario" id="r-compartir" hidden>📤 Compartir</button>
+      </div>
+      <button type="button" class="enlace" data-cerrar>Cerrar</button>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-mes">
+    <form id="form-mes">
+      <h2>📅 Cierre de mes</h2>
+      <p class="detalle">Resumen de todas las jornadas registradas en el mes: efectivo, tarjeta, gastos, total, 50%, banco y saldo entre socios.</p>
+      <label>Mes
+        <input name="mes" type="month" required />
+      </label>
+      <p id="mes-mensaje"></p>
+      <div class="acciones">
+        <button class="secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="principal" type="submit">Ver resumen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-rango">
+    <form id="form-rango">
+      <h2>🗓️ Resumen por fechas</h2>
+      <p class="detalle">Resumen de las jornadas registradas entre dos fechas: efectivo, tarjeta, gastos, total, 50%, banco, saldo entre socios y abonos hechos.</p>
+      <div class="dos-columnas">
+        <label>Desde
+          <input name="desde" type="date" required />
+        </label>
+        <label>Hasta
+          <input name="hasta" type="date" required />
+        </label>
+      </div>
+      <div class="acciones-recibo">
+        <button type="button" class="secundario" data-atajo="semana">Esta semana</button>
+        <button type="button" class="secundario" data-atajo="7">Últimos 7 días</button>
+        <button type="button" class="secundario" data-atajo="30">Últimos 30 días</button>
+        <button type="button" class="secundario" data-atajo="anio">Este año</button>
+      </div>
+      <p id="rango-mensaje" class="error"></p>
+      <div class="acciones">
+        <button class="secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="principal" type="submit">Ver resumen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-saldo">
+    <form id="form-saldo">
+      <h2>🤝 Te tengo / 🙋 Me tienes</h2>
+      <p class="detalle" id="saldo-explicacion"></p>
+      <div class="dos-columnas">
+        <label>Te tengo
+          <input name="teTengo" type="number" step="0.01" min="0" inputmode="decimal" />
+        </label>
+        <label>Me tienes
+          <input name="meTienes" type="number" step="0.01" min="0" inputmode="decimal" />
+        </label>
+      </div>
+      <p class="ayuda-saldo">Escribe los montos para cargarlos a mano en esta jornada. Deja ambas casillas vacías para usar el cálculo automático. Al registrar la jornada, lo pendiente no se borra: solo baja con «Te he pagado» o «Me has pagado».</p>
+      <p id="saldo-mensaje" class="error"></p>
+      <div class="acciones">
+        <button class="secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="principal" type="submit">Guardar</button>
+      </div>
+      <button type="button" class="enlace" id="saldo-auto">↺ Volver al cálculo automático</button>
+    </form>
+  </dialog>
+
+  <dialog id="dlg-abono">
+    <div class="contenido">
+      <h2 id="ab-titulo">💸 Te he pagado</h2>
+      <p class="ayuda-saldo" id="ab-pendiente-txt">Pendiente</p>
+      <p class="total-grande" id="mt-total">0,00</p>
+      <p class="ayuda-saldo" id="mt-detalle"></p>
+      <form class="fila-input" id="form-pago">
+        <label id="ab-etiqueta">Monto pagado
+          <input name="pago" type="number" step="0.01" min="0.01" inputmode="decimal" required />
+        </label>
+        <button class="principal" type="submit">Abonar</button>
+      </form>
+      <label>Nota (opcional)
+        <input id="ab-nota" type="text" maxlength="500" />
+      </label>
+      <form class="fila-input" id="form-total">
+        <label>Fijar el pendiente a mano
+          <input name="total" type="number" step="0.01" min="0" inputmode="decimal" required />
+        </label>
+        <button class="secundario" type="submit">Guardar</button>
+      </form>
+      <p id="mt-mensaje"></p>
+      <h3 style="margin:0">Abonos y ajustes</h3>
+      <ul id="lista-pagos"></ul>
+      <div class="acciones"><button class="secundario" type="button" data-cerrar>Cerrar</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-historico">
+    <div class="contenido">
+      <h2>📚 Histórico de jornadas</h2>
+      <ul id="lista-historico" class="historico"><li class="vacio">Cargando…</li></ul>
+      <div class="acciones"><button class="secundario" type="button" data-cerrar>Cerrar</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-info">
+    <div class="contenido">
+      <h2 id="info-titulo"></h2>
+      <p class="detalle" id="info-texto"></p>
+      <div class="acciones"><button class="principal" type="button" data-cerrar>Entendido</button></div>
+    </div>
+  </dialog>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

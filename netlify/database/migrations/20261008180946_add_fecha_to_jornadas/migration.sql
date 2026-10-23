@@ -1,0 +1,1 @@
+ALTER TABLE "jornadas" ADD COLUMN "fecha" date;
