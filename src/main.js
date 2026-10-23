@@ -2,11 +2,13 @@ import {
   AuthError,
   alCerrarSesion,
   cambiarPassword,
+  generarCodigo,
   llave,
   login,
   logout,
   procesarEnlace,
   recuperar,
+  recuperarConCodigo,
   signup,
   usuarioActual,
   usuarioGuardado,
@@ -74,13 +76,14 @@ formAuth.addEventListener("submit", async (e) => {
     if (modo === "signup") {
       const nombre = formAuth.nombre.value.trim();
       const apellido = formAuth.apellido.value.trim();
-      const { user, confirmado } = await signup(email, password, {
+      const { user, confirmado, codigo } = await signup(email, password, {
         full_name: `${nombre} ${apellido}`,
         nombre,
         apellido,
       });
       if (confirmado) {
         mostrarApp(user);
+        if (codigo) mostrarCodigo(codigo, "Tu cuenta está creada");
       } else {
         cambiarModo("login");
         formAuth.email.value = email;
@@ -103,7 +106,84 @@ $("olvide").addEventListener("click", async () => {
     await recuperar(email);
     avisarAuth("📧 Si el correo está registrado, recibirás un enlace para cambiar la contraseña.", "ok");
   } catch (err) {
+    // 501: la versión de Cloudflare no envía correos y usa el código de recuperación.
+    if (err instanceof AuthError && err.status === 501) { mostrarRecuperar(email); return; }
     avisarAuth(mensajeError(err), "error");
+  }
+});
+
+/* ---------- Recuperar con código (versión de Cloudflare) ---------- */
+
+const formRecuperar = $("form-recuperar");
+
+function mostrarRecuperar(email) {
+  formAuth.hidden = true;
+  formNueva.hidden = true;
+  formRecuperar.hidden = false;
+  document.querySelector(".pestanas").hidden = true;
+  formRecuperar.email.value = email || "";
+  formRecuperar.codigo.value = "";
+  formRecuperar.password.value = "";
+  avisarAuth("");
+}
+
+$("recuperar-volver").addEventListener("click", () => mostrarAuth());
+
+formRecuperar.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const boton = formRecuperar.querySelector("button[type=submit]");
+  boton.disabled = true;
+  try {
+    const { user, codigo } = await recuperarConCodigo(formRecuperar.email.value, formRecuperar.codigo.value, formRecuperar.password.value);
+    formRecuperar.reset();
+    mostrarApp(user);
+    if (codigo) mostrarCodigo(codigo, "Contraseña cambiada");
+  } catch (err) {
+    avisarAuth(err instanceof AuthError && err.status === 400 ? "El correo o el código de recuperación no son correctos." : mensajeError(err), "error");
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+/* ---------- Código de recuperación: verlo o generar uno nuevo ---------- */
+
+function mostrarCodigo(codigo, titulo) {
+  $("form-codigo").hidden = true;
+  $("codigo-resultado").hidden = false;
+  $("codigo-titulo").textContent = titulo || "Guarda tu código";
+  $("codigo-valor").textContent = codigo;
+  $("codigo-copiado").textContent = "";
+  if (!$("dlg-codigo").open) $("dlg-codigo").showModal();
+}
+
+$("codigo-recuperacion").addEventListener("click", () => {
+  $("form-codigo").hidden = false;
+  $("form-codigo").reset();
+  $("codigo-resultado").hidden = true;
+  $("codigo-error").textContent = "";
+  $("dlg-codigo").showModal();
+});
+
+$("form-codigo").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const boton = $("form-codigo").querySelector("button[type=submit]");
+  boton.disabled = true;
+  try {
+    mostrarCodigo(await generarCodigo($("form-codigo").password.value), "Tu código nuevo");
+    $("form-codigo").reset();
+  } catch (err) {
+    $("codigo-error").textContent = err instanceof AuthError && err.status === 403 ? "Contraseña incorrecta." : mensajeError(err);
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+$("codigo-copiar").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("codigo-valor").textContent);
+    $("codigo-copiado").textContent = "Copiado.";
+  } catch {
+    $("codigo-copiado").textContent = "No se pudo copiar. Anótalo a mano.";
   }
 });
 
@@ -128,6 +208,7 @@ function mostrarAuth() {
   $("auth").hidden = false;
   formAuth.hidden = false;
   formNueva.hidden = true;
+  formRecuperar.hidden = true;
   document.querySelector(".pestanas").hidden = false;
   formAuth.password.value = "";
 }
@@ -137,6 +218,8 @@ function mostrarApp(user) {
   $("app").hidden = false;
   fechaInput.hidden = false;
   usuario = user;
+  // El botón del código de recuperación solo existe en la versión de Cloudflare.
+  $("codigo-recuperacion").hidden = !user.app_metadata?.codigo_recuperacion;
   const nombreCompleto = user.user_metadata?.full_name || "";
   $("usuario-email").textContent = nombreCompleto ? `${nombreCompleto} · ${user.email || ""}` : user.email || "";
   avisarAuth("");

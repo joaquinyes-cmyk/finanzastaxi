@@ -112,11 +112,26 @@ export async function login(email, password) {
 export async function signup(email, password, data) {
   email = normalizar(email);
   const user = await pedir("/signup", { metodo: "POST", json: { email, password, data } });
-  if (user.confirmed_at) return { user: await login(email, password), confirmado: true };
-  return { user, confirmado: false };
+  // "recovery_code" solo lo envía la versión de Cloudflare (código de recuperación sin correo).
+  if (user.confirmed_at) return { user: await login(email, password), confirmado: true, codigo: user.recovery_code || null };
+  return { user, confirmado: false, codigo: null };
 }
 
 export const recuperar = (email) => pedir("/recover", { metodo: "POST", json: { email: normalizar(email) } });
+
+// Cambia la contraseña con el código de recuperación (versión de Cloudflare, sin correo).
+// Entra a la cuenta y devuelve el código nuevo, porque el usado deja de valer.
+export async function recuperarConCodigo(email, codigo, password) {
+  const tokens = await pedir("/recover", { metodo: "POST", json: { email: normalizar(email), recovery_code: codigo, password } });
+  return { user: await abrirSesion(tokens), codigo: tokens.recovery_code || null };
+}
+
+// Genera un código de recuperación nuevo para la cuenta con la sesión abierta.
+export async function generarCodigo(password) {
+  const token = await llave();
+  const data = await pedir("/recovery-code", { metodo: "POST", json: { password }, token });
+  return data.recovery_code;
+}
 
 export async function verificar(token, type) {
   const tokens = await pedir("/verify", { metodo: "POST", json: { token, type } });

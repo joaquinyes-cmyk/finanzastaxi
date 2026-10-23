@@ -37,11 +37,35 @@ En el Worker, en **Configuración → Variables y secretos**:
 - `JWT_SECRET` (como secreto): clave para firmar las sesiones. Si no se pone, la app genera
   una al azar y la guarda en la base de datos.
 
+## Si olvidas la contraseña (sin correo)
+
+Esta versión no envía correos. En su lugar cada cuenta tiene un **código de recuperación**:
+
+- Al crear la cuenta, la app muestra un código como `ABCD-EFGH-JKLM-NPQR`. Se ve **una sola vez**:
+  guárdalo en un sitio seguro (por ejemplo, las notas del móvil).
+- Si olvidas la contraseña, en la pantalla de entrada pulsa **«¿Olvidaste tu contraseña?»**, escribe
+  tu correo, el código y una contraseña nueva. Al usarlo se cierran las sesiones abiertas y la app
+  muestra un **código nuevo**: el anterior deja de valer.
+- Las cuentas creadas antes de esta función no tienen código. Entra a la cuenta y pulsa **🔑 Código**
+  (arriba, junto a «Descargar copia»): pide la contraseña y genera uno. Desde ahí también se puede
+  generar uno nuevo cuando quieras.
+
+### Si alguien pierde también el código (restablecer como administrador)
+
+1. En el Worker, en **Configuración → Variables y secretos**, crea el secreto `ADMIN_KEY` con una clave
+   larga y al azar (**16 caracteres o más**; si es más corta, esta función queda desactivada).
+2. Abre `https://TU-WORKER.workers.dev/api/admin-restablecer` desde el móvil o el ordenador.
+3. Escribe la clave de administrador, el correo de la cuenta y una contraseña nueva.
+4. La página muestra el código de recuperación nuevo de esa cuenta. Pásaselo a su dueño junto con
+   la contraseña nueva.
+
+Si no existe `ADMIN_KEY`, esa dirección responde «No encontrado». Para desactivarla de nuevo,
+borra el secreto.
+
 ## Diferencias con la versión de Netlify
 
 - Al crear una cuenta se entra directamente, sin correo de confirmación.
-- Esta versión no envía correos, así que **«¿Olvidaste tu contraseña?» no funciona**. Guarda bien
-  la contraseña.
+- No se envían correos: la recuperación de contraseña usa el código de recuperación de arriba.
 
 ## Probarla en tu ordenador
 

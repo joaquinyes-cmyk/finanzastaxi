@@ -23,6 +23,13 @@ const ESQUEMA = [
     usada_at TEXT NOT NULL DEFAULT ${AHORA}
   )`,
   `CREATE INDEX IF NOT EXISTS sesiones_user_idx ON sesiones (user_id)`,
+  // Código de recuperación de cada cuenta (se guarda solo su hash). Sirve para poner una
+  // contraseña nueva sin correo.
+  `CREATE TABLE IF NOT EXISTS recuperacion (
+    user_id TEXT PRIMARY KEY,
+    codigo_hash TEXT NOT NULL,
+    creado_at TEXT NOT NULL DEFAULT ${AHORA}
+  )`,
   `CREATE TABLE IF NOT EXISTS ajustes (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS jornadas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,6 +110,26 @@ async function comprobarPassword(password, guardado) {
   for (let i = 0; i < calculado.length; i++) dif |= calculado.charCodeAt(i) ^ hash.charCodeAt(i % hash.length);
   return dif === 0;
 }
+// Comparación que tarda lo mismo aunque los textos se parezcan.
+function iguales(a, b) {
+  a = String(a);
+  b = String(b);
+  let dif = a.length ^ b.length;
+  for (let i = 0; i < a.length; i++) dif |= a.charCodeAt(i) ^ b.charCodeAt(i % (b.length || 1));
+  return dif === 0;
+}
+
+// Código de recuperación: 16 letras y números sin los que se confunden (0, O, 1, I),
+// escritas en grupos de 4. Son 80 bits al azar, imposibles de adivinar.
+const ALFABETO_CODIGO = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const nuevoCodigo = () =>
+  Array.from(crypto.getRandomValues(new Uint8Array(16)), (b) => ALFABETO_CODIGO[b % 32])
+    .join("")
+    .match(/.{4}/g)
+    .join("-");
+const limpiarCodigo = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+const hashCodigo = (c) => sha256(limpiarCodigo(c));
+
 // Contraseña de relleno para tardar lo mismo cuando el correo no existe.
 const PASSWORD_FALSA = `pbkdf2$${ITERACIONES}$AAAAAAAAAAAAAAAAAAAAAA$AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA`;
 
@@ -173,17 +200,38 @@ const comoUsuario = (fila) => ({
   confirmed_at: fila.creado_at,
   created_at: fila.creado_at,
   updated_at: fila.actualizado_at,
-  app_metadata: { provider: "email" },
+  // "codigo_recuperacion" le avisa a la pantalla que esta versión tiene código de recuperación.
+  app_metadata: { provider: "email", codigo_recuperacion: true },
   user_metadata: JSON.parse(fila.user_metadata || "{}"),
 });
 const buscarUsuario = (env, campo, valor) => una(env, `SELECT * FROM usuarios WHERE ${campo} = ?`, valor);
 
-async function abrirSesion(env, usuario, refresh) {
+async function abrirSesion(env, usuario, refresh, extra = {}) {
   if (!refresh) {
     refresh = aleatorio(32);
     await ejecutar(env, "INSERT INTO sesiones (token_hash, user_id) VALUES (?, ?)", await sha256(refresh), usuario.id);
   }
-  return json({ access_token: await firmarLlave(env, usuario), token_type: "bearer", expires_in: DURACION_S, refresh_token: refresh });
+  return json({ access_token: await firmarLlave(env, usuario), token_type: "bearer", expires_in: DURACION_S, refresh_token: refresh, ...extra });
+}
+
+// Crea (o reemplaza) el código de recuperación de una cuenta y lo devuelve en claro:
+// es la única vez que se puede ver.
+async function guardarCodigo(env, userId) {
+  const codigo = nuevoCodigo();
+  await ejecutar(env, "INSERT OR REPLACE INTO recuperacion (user_id, codigo_hash) VALUES (?, ?)", userId, await hashCodigo(codigo));
+  return codigo;
+}
+
+// Pone una contraseña nueva, cierra las sesiones abiertas y cambia el código de recuperación.
+// Devuelve el código nuevo.
+async function reiniciarCuenta(env, userId, password) {
+  const codigo = nuevoCodigo();
+  await env.DB.batch([
+    env.DB.prepare(`UPDATE usuarios SET password_hash = ?, actualizado_at = ${AHORA} WHERE id = ?`).bind(await cifrarPassword(password), userId),
+    env.DB.prepare("DELETE FROM sesiones WHERE user_id = ?").bind(userId),
+    env.DB.prepare("INSERT OR REPLACE INTO recuperacion (user_id, codigo_hash) VALUES (?, ?)").bind(userId, await hashCodigo(codigo)),
+  ]);
+  return codigo;
 }
 
 const credencialesMal = () => json({ error: "invalid_grant", error_description: "Invalid login credentials" }, 400);
@@ -233,7 +281,8 @@ async function identidad(req, env, ruta) {
       .run();
     if (!res.meta.changes) return json({ code: 400, msg: "A user with this email address has already been registered" }, 400);
     // No hay correo de confirmación: la cuenta queda confirmada al crearla.
-    return json(comoUsuario(await buscarUsuario(env, "email", email)));
+    const nueva = await buscarUsuario(env, "email", email);
+    return json({ ...comoUsuario(nueva), recovery_code: await guardarCodigo(env, nueva.id) });
   }
 
   if (ruta === "/user" && (req.method === "GET" || req.method === "PUT")) {
@@ -257,8 +306,37 @@ async function identidad(req, env, ruta) {
     return new Response(null, { status: 204 });
   }
 
+  // Código de recuperación nuevo para la cuenta con la sesión abierta. Pide la contraseña
+  // para que nadie con el móvil desbloqueado pueda cambiarlo. El código anterior deja de valer.
+  if (ruta === "/recovery-code" && req.method === "POST") {
+    const llave = await leerLlave(env, req);
+    const fila = llave && (await buscarUsuario(env, "id", llave.sub));
+    if (!fila) return json({ code: 401, msg: "Invalid token" }, 401);
+    const body = await req.json().catch(() => null);
+    const ok = await comprobarPassword(typeof body?.password === "string" ? body.password : "", fila.password_hash);
+    if (!ok) return json({ code: 403, msg: "Invalid password" }, 403);
+    return json({ recovery_code: await guardarCodigo(env, fila.id) });
+  }
+
+  if (ruta === "/recover" && req.method === "POST") {
+    const body = await req.json().catch(() => null);
+    // Sin código, es el aviso de que esta versión no envía correos: la pantalla pasa a pedir el código.
+    if (!body?.recovery_code) {
+      return json({ code: 501, msg: "En esta versión no se puede recuperar la contraseña por correo. Usa tu código de recuperación." }, 501);
+    }
+    const password = typeof body.password === "string" ? body.password : "";
+    if (password.length < 6) return json({ code: 422, msg: "Password should be at least 6 characters" }, 422);
+    const fila = await buscarUsuario(env, "email", normalizar(body.email));
+    const guardado = fila && (await una(env, "SELECT codigo_hash FROM recuperacion WHERE user_id = ?", fila.id));
+    // Mismo error si el correo no existe o el código no coincide.
+    if (!guardado || !iguales(guardado.codigo_hash, await hashCodigo(body.recovery_code))) {
+      return json({ code: 400, msg: "Invalid recovery code", error_description: "Invalid recovery code" }, 400);
+    }
+    const codigo = await reiniciarCuenta(env, fila.id, password);
+    return abrirSesion(env, comoUsuario(await buscarUsuario(env, "id", fila.id)), null, { recovery_code: codigo });
+  }
+
   if (ruta === "/recover" || ruta === "/verify") {
-    // Esta versión no envía correos.
     return json({ code: 501, msg: "En esta versión no se puede recuperar la contraseña por correo." }, 501);
   }
 
@@ -648,6 +726,62 @@ async function datos(req, env, ruta) {
   return new Response("Method not allowed", { status: 405 });
 }
 
+/* ---------- Restablecer contraseñas como administrador ---------- */
+
+// Página sencilla para poner una contraseña nueva a una cuenta desde el móvil. Solo existe
+// si el Worker tiene la variable secreta ADMIN_KEY (de 16 caracteres o más).
+const RUTA_ADMIN = "/api/admin-restablecer";
+const PAGINA_ADMIN = `<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Restablecer contraseña</title>
+<style>body{font:16px system-ui,sans-serif;max-width:420px;margin:2rem auto;padding:0 1rem}
+form{display:grid;gap:.8rem}input,button{font:inherit;padding:.7rem;border-radius:8px;border:1px solid #bbb}
+button{background:#111;color:#fff;border:0;font-weight:600}#salida{margin-top:1rem;word-break:break-word}
+.codigo{font:700 1.3rem ui-monospace,monospace;letter-spacing:.05em}</style></head><body>
+<h1>Restablecer contraseña</h1>
+<form id="f">
+<label>Clave de administrador<input name="clave" type="password" autocomplete="off" required></label>
+<label>Correo de la cuenta<input name="email" type="email" autocapitalize="off" required></label>
+<label>Contraseña nueva<input name="password" type="text" autocomplete="off" minlength="6" required></label>
+<button>Cambiar contraseña</button>
+</form>
+<p id="salida"></p>
+<script>
+document.getElementById("f").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const f = e.target, s = document.getElementById("salida");
+  s.textContent = "Enviando…";
+  try {
+    const r = await fetch("${RUTA_ADMIN}", { method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer " + f.clave.value },
+      body: JSON.stringify({ email: f.email.value, password: f.password.value }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { s.textContent = d.error || "Error " + r.status; return; }
+    s.textContent = "Listo. Contraseña cambiada. Código de recuperación nuevo de esa cuenta: ";
+    const c = document.createElement("div"); c.className = "codigo"; c.textContent = d.recovery_code;
+    s.appendChild(c);
+    f.password.value = "";
+  } catch { s.textContent = "Sin conexión."; }
+});
+</script></body></html>`;
+
+async function administrador(req, env) {
+  // Sin ADMIN_KEY (o con una demasiado corta) esta función no existe.
+  if (String(env.ADMIN_KEY || "").length < 16) return json({ error: "No encontrado" }, 404);
+  if (req.method === "GET") {
+    return new Response(PAGINA_ADMIN, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+  }
+  if (req.method !== "POST") return new Response("Method not allowed", { status: 405 });
+  const clave = (req.headers.get("authorization") || "").match(/^Bearer (.+)$/i)?.[1] || "";
+  if (!iguales(await sha256(clave), await sha256(env.ADMIN_KEY))) return json({ error: "Clave de administrador no válida" }, 401);
+  const body = await req.json().catch(() => null);
+  const password = typeof body?.password === "string" ? body.password : "";
+  if (password.length < 6) return json({ error: "La contraseña nueva debe tener al menos 6 caracteres" }, 422);
+  const fila = await buscarUsuario(env, "email", normalizar(body?.email));
+  if (!fila) return json({ error: "No hay ninguna cuenta con ese correo" }, 404);
+  return json({ ok: true, email: fila.email, recovery_code: await reiniciarCuenta(env, fila.id, password) });
+}
+
 /* ---------- Entrada del Worker ---------- */
 
 const RUTAS_API = ["/api/movimientos", "/api/jornadas", "/api/me-tienes", "/api/pagos"];
@@ -657,9 +791,11 @@ export default {
   async fetch(req, env) {
     const ruta = new URL(req.url).pathname.replace(/\/+$/, "");
     const esIdentidad = ruta.startsWith(IDENTITY);
-    if (!esIdentidad && !RUTAS_API.includes(ruta)) return env.ASSETS.fetch(req);
+    const esAdmin = ruta === RUTA_ADMIN;
+    if (!esIdentidad && !esAdmin && !RUTAS_API.includes(ruta)) return env.ASSETS.fetch(req);
     try {
       await prepararEsquema(env);
+      if (esAdmin) return await administrador(req, env);
       return esIdentidad ? await identidad(req, env, ruta.slice(IDENTITY.length)) : await datos(req, env, ruta);
     } catch (err) {
       console.error("Error en el servidor", err);
