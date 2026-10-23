@@ -132,6 +132,7 @@
     .aviso-dia { margin: 0 0 1rem; padding: .7rem .9rem; border-radius: 10px; background: #fff8d6; border-left: 6px solid var(--amarillo); font-size: .9rem; display: flex; gap: .5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; }
     .btn-mes { width: 100%; margin-top: .75rem; padding: .9rem; border: 0; border-radius: 14px; background: var(--negro); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
     #mes-mensaje { margin: 0; min-height: 1rem; font-size: .85rem; color: var(--rojo); }
+    .codigo-grande { margin: 0; padding: .9rem; border-radius: 10px; background: #f6f4ec; text-align: center; font: 700 1.35rem ui-monospace, monospace; letter-spacing: .06em; word-break: break-all; user-select: all; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -175,6 +176,21 @@
         </label>
         <button class="principal ancho" type="submit">Guardar contraseña</button>
       </form>
+      <form id="form-recuperar" hidden>
+        <h2>Recuperar contraseña</h2>
+        <p class="detalle">Escribe tu correo, el código de recuperación que guardaste y una contraseña nueva.</p>
+        <label>Correo electrónico
+          <input name="email" type="email" autocomplete="email" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+        </label>
+        <label>Código de recuperación
+          <input name="codigo" type="text" autocomplete="off" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="XXXX-XXXX-XXXX-XXXX" required />
+        </label>
+        <label>Contraseña nueva
+          <input name="password" type="password" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" minlength="6" required />
+        </label>
+        <button class="principal ancho" type="submit">Cambiar contraseña</button>
+        <button class="enlace" type="button" id="recuperar-volver">Volver</button>
+      </form>
       <p id="auth-mensaje"></p>
     </div>
   </main>
@@ -183,6 +199,7 @@
     <div class="usuario">
       <span>👤 <strong id="usuario-email"></strong></span>
       <span class="botones-cuenta">
+        <button type="button" class="secundario chico" id="codigo-recuperacion" hidden>🔑 Código</button>
         <button type="button" class="secundario chico" id="descargar">⬇️ Descargar copia</button>
         <button type="button" class="secundario chico" id="salir">Salir</button>
       </span>
@@ -369,6 +386,31 @@
       <h2>📚 Histórico de jornadas</h2>
       <ul id="lista-historico" class="historico"><li class="vacio">Cargando…</li></ul>
       <div class="acciones"><button class="secundario" type="button" data-cerrar>Cerrar</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-codigo">
+    <form id="form-codigo">
+      <h2>🔑 Código de recuperación</h2>
+      <p class="detalle">Si olvidas tu contraseña, este código te deja poner una nueva sin necesidad de correo. Si generas uno nuevo, el anterior deja de valer.</p>
+      <label>Tu contraseña actual
+        <input name="password" type="password" autocomplete="current-password" autocapitalize="off" autocorrect="off" spellcheck="false" required />
+      </label>
+      <p class="detalle" id="codigo-error" style="color: var(--rojo)"></p>
+      <div class="acciones">
+        <button class="secundario" type="button" data-cerrar>Cancelar</button>
+        <button class="principal" type="submit">Generar código</button>
+      </div>
+    </form>
+    <div class="contenido" id="codigo-resultado" hidden>
+      <h2 id="codigo-titulo">Guarda tu código</h2>
+      <p class="detalle">Guárdalo ahora en un sitio seguro, por ejemplo en las notas del móvil. No se vuelve a mostrar y lo necesitarás si olvidas la contraseña.</p>
+      <p class="codigo-grande" id="codigo-valor"></p>
+      <p class="detalle" id="codigo-copiado"></p>
+      <div class="acciones">
+        <button class="secundario" type="button" id="codigo-copiar">Copiar</button>
+        <button class="principal" type="button" data-cerrar>Ya lo guardé</button>
+      </div>
     </div>
   </dialog>
 
