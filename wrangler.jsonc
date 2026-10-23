@@ -1,0 +1,30 @@
+// Versión de Finanzas Taxi para Cloudflare Workers. Es independiente de la de Netlify:
+// tiene su propia base de datos (D1) y sus propias cuentas. El código está en "cloudflare/".
+// Está en la raíz para que funcione el comando de despliegue por defecto de Cloudflare
+// ("npx wrangler deploy") sin configurar nada.
+{
+  // Debe coincidir con el nombre del Worker creado en el panel de Cloudflare.
+  "name": "finanzastaxi",
+  "main": "cloudflare/worker.js",
+  "compatibility_date": "2025-09-01",
+  // Genera la interfaz antes de cada despliegue, aunque no se ponga comando de compilación.
+  "build": { "command": "npm run build" },
+  "assets": {
+    // La misma interfaz que en Netlify.
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // El acceso y la API los responde el Worker; el resto son archivos estáticos.
+    "run_worker_first": ["/api/*", "/.netlify/identity/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "finanzastaxi-db"
+      // Sin "database_id", Wrangler crea la base de datos en el primer despliegue.
+      // Si ya la creaste a mano, pega aquí su id:
+      // "database_id": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+    }
+  ],
+  "observability": { "enabled": true }
+}
