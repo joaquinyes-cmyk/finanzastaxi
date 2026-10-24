@@ -15,7 +15,7 @@
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     // El acceso y la API los responde el Worker; el resto son archivos estáticos.
-    "run_worker_first": ["/api/*", "/.netlify/identity/*"]
+    "run_worker_first": ["/api/*", "/.netlify/identity/*", "/apple-touch-icon.png", "/favicon-48.png", "/icon-192.png", "/icon-512.png"]
   },
   "d1_databases": [
     {
