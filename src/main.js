@@ -198,6 +198,12 @@ formNueva.addEventListener("submit", async (e) => {
   }
 });
 
+/* ---------- Ayuda ---------- */
+
+document.querySelectorAll("[data-ayuda]").forEach((b) => b.addEventListener("click", () => {
+  $("dlg-ayuda").showModal();
+}));
+
 $("salir").addEventListener("click", async () => {
   await logout();
 });

@@ -141,6 +141,20 @@
     .btn-mes { width: 100%; margin-top: .75rem; padding: .9rem; border: 0; border-radius: 14px; background: var(--negro); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
     #mes-mensaje { margin: 0; min-height: 1rem; font-size: .85rem; color: var(--rojo); }
     .codigo-grande { margin: 0; padding: .9rem; border-radius: 10px; background: #f6f4ec; text-align: center; font: 700 1.35rem ui-monospace, monospace; letter-spacing: .06em; word-break: break-all; user-select: all; }
+    #dlg-ayuda { max-height: 88vh; overflow-y: auto; }
+    .ayuda { display: grid; gap: .6rem; padding: 1.25rem; }
+    .ayuda details { border: 1px solid #e3dfd0; border-radius: 10px; padding: .6rem .8rem; background: #fff; }
+    .ayuda summary { font-weight: 700; cursor: pointer; }
+    .ayuda details[open] summary { margin-bottom: .5rem; }
+    .ayuda { min-width: 0; }
+    .ayuda > * { min-width: 0; }
+    .ayuda p, .ayuda li { margin: .35rem 0; line-height: 1.5; color: #333; font-size: .95rem; overflow-wrap: anywhere; }
+    .ayuda ol, .ayuda ul { margin: .3rem 0; padding-left: 1.4rem; }
+    /* anula el estilo general de las listas (filas de registros) */
+    .ayuda ol { list-style: decimal; }
+    .ayuda li { display: list-item; background: none; border-radius: 0; padding: 0; margin: .35rem 0; }
+    .ayuda .aviso { background: #fff8d6; border-left: 5px solid var(--amarillo); padding: .5rem .7rem; border-radius: 8px; }
+    .ayuda-enlace { text-align: center; margin: .75rem 0 0; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -200,6 +214,7 @@
         <button class="enlace" type="button" id="recuperar-volver">Volver</button>
       </form>
       <p id="auth-mensaje"></p>
+      <p class="ayuda-enlace"><button class="enlace" type="button" data-ayuda>❓ Ayuda</button></p>
     </div>
   </main>
 
@@ -207,6 +222,7 @@
     <div class="usuario">
       <span>👤 <strong id="usuario-email"></strong></span>
       <span class="botones-cuenta">
+        <button type="button" class="secundario chico" data-ayuda>❓ Ayuda</button>
         <button type="button" class="secundario chico" id="codigo-recuperacion" hidden>🔑 Código</button>
         <button type="button" class="secundario chico" id="descargar">⬇️ Descargar copia</button>
         <button type="button" class="secundario chico" id="salir">Salir</button>
@@ -419,6 +435,58 @@
         <button class="secundario" type="button" id="codigo-copiar">Copiar</button>
         <button class="principal" type="button" data-cerrar>Ya lo guardé</button>
       </div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-ayuda">
+    <div class="ayuda">
+      <h2>❓ Ayuda</h2>
+
+      <details>
+        <summary>🔓 Olvidé mi contraseña o no puedo entrar</summary>
+        <ol>
+          <li>En la pantalla de entrada, escribe tu <strong>correo</strong> y pulsa <strong>«¿Olvidaste tu contraseña?»</strong>.</li>
+          <li>Escribe el <strong>código de recuperación</strong> que guardaste y una <strong>contraseña nueva</strong> (mínimo 6 caracteres).</li>
+          <li>Entrarás directamente. La app te dará un <strong>código nuevo</strong>: guárdalo, porque el anterior ya no vale.</li>
+        </ol>
+        <p class="aviso"><strong>¿Perdiste también el código?</strong> Pídele al administrador de la app que restablezca tu contraseña. Te dará una contraseña provisional y un código nuevo. Tus registros no se pierden.</p>
+      </details>
+
+      <details>
+        <summary>🔑 Generar o cambiar mi código de recuperación</summary>
+        <ol>
+          <li>Entra en tu cuenta y pulsa <strong>🔑 Código</strong> (arriba, junto a «Ayuda»).</li>
+          <li>Escribe tu contraseña actual y pulsa <strong>Generar código</strong>.</li>
+          <li><strong>Guárdalo ya</strong>, por ejemplo en las notas del móvil. Solo se muestra una vez.</li>
+        </ol>
+        <p>Si generas uno nuevo, el anterior deja de valer. Conviene tenerlo hecho <strong>antes</strong> de olvidar la contraseña.</p>
+      </details>
+
+      <details>
+        <summary>⚽ La app no abre durante un partido de fútbol</summary>
+        <p>En España, mientras hay partidos, algunos operadores (Movistar, Vodafone, Orange, DIGI…) bloquean direcciones de internet de Cloudflare, donde está alojada la app. <strong>No es un fallo de la app y no se pierde ningún dato.</strong></p>
+        <p><strong>Solución rápida:</strong></p>
+        <ol>
+          <li>Instala la app gratuita <strong>1.1.1.1</strong> de Cloudflare (App Store o Google Play).</li>
+          <li>Ábrela y activa el interruptor de <strong>WARP</strong>.</li>
+          <li>Vuelve a abrir Finanzas Taxi. Al terminar, puedes apagar WARP.</li>
+        </ol>
+        <p>Otras opciones: cualquier VPN, o esperar a que termine el partido. Para comprobar si hay bloqueo: <strong>hayahora.futbol</strong>.</p>
+        <p class="aviso">Si la app no llega a abrir, esta ayuda tampoco se verá. Guarda estas instrucciones por si acaso.</p>
+      </details>
+
+      <details>
+        <summary>📲 Instalar la app en el móvil</summary>
+        <p><strong>iPhone (con Safari):</strong> pulsa Compartir (el cuadrado con la flecha) y elige <strong>Añadir a pantalla de inicio</strong>.</p>
+        <p><strong>Android (con Chrome):</strong> pulsa el menú ⋮ y elige <strong>Instalar aplicación</strong> o <strong>Añadir a pantalla de inicio</strong>.</p>
+      </details>
+
+      <details>
+        <summary>💾 Copia de seguridad de mis registros</summary>
+        <p>Pulsa <strong>⬇️ Descargar copia</strong> para bajar todos tus registros en un archivo que abre Excel.</p>
+      </details>
+
+      <div class="acciones"><button class="principal" type="button" data-cerrar>Cerrar</button></div>
     </div>
   </dialog>
 
