@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#141414" />
+  <meta name="theme-color" content="#f5c400" />
   <link rel="manifest" href="/manifest.webmanifest" />
   <link rel="icon" type="image/svg+xml" href="/logo.svg" />
   <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48.png" />
@@ -11,8 +11,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="Finanzas Taxi" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <title>Finanzas Taxi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
   <style>
     :root {
       --amarillo: #f5c400; --amarillo-osc: #b38f00; --negro: #141414; --gris: #6b6b6b;
@@ -155,13 +158,76 @@
     .ayuda li { display: list-item; background: none; border-radius: 0; padding: 0; margin: .35rem 0; }
     .ayuda .aviso { background: #fff8d6; border-left: 5px solid var(--amarillo); padding: .5rem .7rem; border-radius: 8px; }
     .ayuda-enlace { text-align: center; margin: .75rem 0 0; }
+
+    /* ===== Diseño B «Claro» ===== */
+    :root { --fondo: #f3f4f6; --tinta: #111827; --suave: #5b6472; --crema: #fff3b8; }
+    body { font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif; background: var(--fondo); color: var(--tinta); -webkit-font-smoothing: antialiased; }
+    header { background: var(--amarillo); color: var(--negro); border: 0; border-radius: 0 0 32px 32px; padding: max(1rem, env(safe-area-inset-top)) 1.1rem 3.2rem; }
+    header h1 { display: flex; align-items: center; gap: .7rem; font-size: 1.3rem; font-weight: 800; letter-spacing: -.02em; }
+    header h1 img { border-radius: 12px; box-shadow: 0 4px 10px rgba(20,20,20,.25); }
+    header input { background: rgba(255,255,255,.7); font-weight: 700; color: var(--negro); }
+    main { margin-top: -2.2rem; position: relative; }
+    main#auth { margin-top: -1.6rem; }
+    .tarjeta { border-radius: 28px; padding: 1.4rem 1.25rem; box-shadow: 0 18px 40px rgba(17,24,39,.10), 0 2px 6px rgba(17,24,39,.06); }
+    .tarjeta h2 { font-size: 1.35rem; font-weight: 800; letter-spacing: -.01em; }
+    label { font-weight: 700; color: #4b5563; }
+    input { background: var(--fondo); border: 1.5px solid transparent; border-radius: 16px; padding: .85rem 1rem; font-weight: 600; color: var(--tinta); min-height: 52px; }
+    input:focus-visible { outline: 0; border-color: var(--negro); background: #fff; }
+    .pestanas { background: var(--fondo); border-radius: 16px; padding: .25rem; }
+    .pestana { min-height: 44px; border-radius: 12px; font-weight: 700; }
+    .pestana.activa { background: var(--negro); color: var(--amarillo); box-shadow: none; }
+    .ancho { min-height: 54px; border-radius: 18px; font-weight: 800; font-size: 1.05rem; }
+    .principal { background: var(--negro); color: var(--amarillo); }
+    .secundario { background: #fff; color: var(--tinta); border: 1.5px solid #d1d5db !important; }
+    .enlace { color: #1f2937; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; min-height: 44px; padding: 0 .5rem; }
+    .ayuda-enlace .enlace { display: inline-flex; align-items: center; justify-content: center; gap: .4rem; width: 100%; min-height: 52px; border: 1.5px solid #e5e7eb; border-radius: 18px; background: #fff; text-decoration: none; }
+    .usuario { background: #fff; border-radius: 22px; padding: .8rem 1rem; box-shadow: 0 2px 6px rgba(17,24,39,.06); color: var(--suave); }
+    .usuario strong { color: var(--tinta); }
+    .chico { min-height: 44px; border-radius: 14px; font-weight: 700; padding: .45rem .8rem; }
+    .aviso-dia { border-radius: 18px; background: var(--crema); border-left: 0; font-weight: 600; }
+
+    .panel { gap: .8rem; }
+    .boton { border-radius: 22px; padding: 1rem 1.05rem; min-height: 104px; box-shadow: 0 2px 6px rgba(17,24,39,.06); border-left: 0 !important; background: #fff; }
+    .boton:active { transform: scale(.98); box-shadow: 0 1px 3px rgba(17,24,39,.08); }
+    .boton .nombre { font-weight: 700; font-size: .95rem; color: var(--suave); }
+    .boton .valor { font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; color: var(--tinta); }
+    .boton.efectivo .valor, .boton.pago-tarjeta .valor, .boton.banco .valor { color: var(--tinta); }
+    .boton.gasto .valor { color: #b42318; }
+    .boton.total { background: var(--negro); box-shadow: 0 18px 36px rgba(17,24,39,.18); grid-column: 1 / -1; min-height: 120px; }
+    .boton.total .nombre { color: #d1d5db; text-transform: uppercase; letter-spacing: .06em; font-size: .8rem; }
+    .boton.total .valor { color: var(--amarillo); font-size: 2.4rem; letter-spacing: -.03em; }
+    .boton.mitad { grid-column: 1 / -1; min-height: 88px; background: var(--crema); box-shadow: 0 2px 6px rgba(17,24,39,.06); }
+    .boton.mitad .nombre { color: #374151; }
+    .boton.saldo.activo { background: var(--crema); }
+    .boton.saldo:not(.activo) .valor { color: #6b7280; }
+    .boton .hoy { color: var(--suave); font-weight: 600; }
+    .boton.abono { border-radius: 20px; min-height: 76px; background: var(--negro); box-shadow: none; }
+    .boton.abono .nombre { color: var(--amarillo); }
+    .boton.abono small { color: #e5e7eb; opacity: 1; }
+    .boton.te-he-pagado, .boton.me-has-pagado { background: var(--negro); box-shadow: none; }
+    .btn-recibo { border: 1.5px solid #d1d5db; border-radius: 18px; min-height: 52px; font-weight: 800; color: var(--tinta); }
+    .btn-registrar { background: var(--amarillo); color: var(--negro); border-radius: 22px; min-height: 62px; font-weight: 800; box-shadow: 0 10px 20px rgba(245,196,0,.35); }
+    .ayuda-registrar { color: var(--suave); }
+    .btn-mes { background: var(--negro); color: var(--amarillo); border-radius: 18px; min-height: 52px; font-weight: 800; }
+    h3 { font-weight: 800; font-size: 1.05rem; }
+    li { border-radius: 18px; box-shadow: 0 2px 6px rgba(17,24,39,.05); padding: .8rem 1rem; }
+    li .monto.Efectivo, li .monto.Tarjeta, li .monto.banco, li .monto.Ingreso { color: var(--tinta); }
+    li .monto.Gasto { color: #b42318; }
+    dialog { border-radius: 28px; box-shadow: 0 24px 60px rgba(17,24,39,.3); }
+    dialog h2 { font-weight: 800; }
+    .acciones button { min-height: 48px; border-radius: 16px; font-weight: 800; }
+    .secundario.acciones, .acciones .secundario { background: var(--fondo); border: 0 !important; }
+    .ayuda details { border-radius: 16px; border-color: #e5e7eb; }
+    .historico li { background: var(--fondo); }
+    :focus-visible { outline: 3px solid var(--negro); outline-offset: 2px; }
+    @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
     [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <header>
     <div class="fila">
-      <h1>🚕 Finanzas Taxi</h1>
+      <h1><img src="/logo.svg" alt="" width="40" height="40" />Finanzas Taxi</h1>
       <input id="fecha" type="date" aria-label="Día de la jornada" title="Día de la jornada: elige un día anterior para cargarlo" hidden />
     </div>
   </header>
