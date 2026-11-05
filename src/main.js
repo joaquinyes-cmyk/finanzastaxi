@@ -352,9 +352,9 @@ function explicarSaldo(r) {
 
 function explicarJornada(r) {
   if (r.manual) return "Valores de esta jornada cargados a mano.";
-  const base = "La tarjeta la cobra el otro socio y el efectivo (menos gastos) lo guardas tú; a cada uno le toca el 50%.";
-  if (r.teTengo > 0) return `${base} Tienes más efectivo que tu 50%, así que le tienes ${fmt.format(r.teTengo)} al otro socio (ya descontado lo ingresado en el banco).`;
-  if (r.meTienes > 0) return `${base} Lo cobrado con tarjeta supera su 50%, así que el otro socio te tiene ${fmt.format(r.meTienes)}.`;
+  const base = "La tarjeta (menos los gastos) la cobra el otro socio y el efectivo lo guardas tú; a cada uno le toca el 50%.";
+  if (r.teTengo > 0) return `${base} Tu efectivo supera a la tarjeta (ya sin gastos), así que le tienes ${fmt.format(r.teTengo)} al otro socio (ya descontado lo ingresado en el banco).`;
+  if (r.meTienes > 0) return `${base} La tarjeta (ya sin gastos) supera al efectivo, así que el otro socio te tiene ${fmt.format(r.meTienes)}.`;
   return `${base} En esta jornada están a mano.`;
 }
 

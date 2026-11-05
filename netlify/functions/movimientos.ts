@@ -50,11 +50,11 @@ function totales(f: Sumas) {
 
 // Saldo automático entre socios de un grupo de registros, visto desde el conductor.
 // Cada socio se queda con el 50% de lo ganado. Lo cobrado con tarjeta lo recibe el
-// otro socio; el efectivo (menos los gastos, que se pagan de él) lo guarda el
+// otro socio; los gastos se descuentan de lo cobrado con tarjeta; el efectivo lo guarda el
 // conductor, y lo ingresado en el banco se le entrega al otro socio.
 // Positivo = "Te tengo" (el conductor guarda dinero del otro); negativo = "Me tienes".
 const saldoAuto = (f: Sumas) =>
-  (Number(f.otros) + Number(f.efectivo) - Number(f.gastos) - Number(f.tarjeta)) / 2 - Number(f.banco);
+  (Number(f.otros) + Number(f.efectivo) - (Number(f.tarjeta) - Number(f.gastos))) / 2 - Number(f.banco);
 
 type Saldo = { teTengo: number; meTienes: number; manual: boolean };
 const separar = (saldo: number) => ({ teTengo: saldo > 0 ? saldo : 0, meTienes: saldo < 0 ? -saldo : 0 });
