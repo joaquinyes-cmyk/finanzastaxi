@@ -535,6 +535,30 @@ async function datos(req, env, ruta) {
 
   /* ----- Historial de jornadas ----- */
   if (ruta === "/api/jornadas") {
+    if (req.method === "DELETE" && idValido) {
+      // Eliminar un día registrado por error (solo jornadas ya cerradas): se borran también sus registros.
+      const jornada = await una(env, "SELECT id FROM jornadas WHERE id = ? AND user_id = ? AND cerrada_at IS NOT NULL", id, userId);
+      if (!jornada) return json({ error: "Jornada no encontrada" }, 404);
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM movimientos WHERE user_id = ? AND jornada_id = ?").bind(userId, id),
+        env.DB.prepare("DELETE FROM jornadas WHERE id = ? AND user_id = ? AND cerrada_at IS NOT NULL").bind(id, userId),
+      ]);
+      return new Response(null, { status: 204 });
+    }
+    if (req.method === "PATCH" && idValido) {
+      // Reabrir un día registrado para corregirlo. La jornada abierta tiene que estar vacía.
+      const jornada = await una(env, "SELECT id FROM jornadas WHERE id = ? AND user_id = ? AND cerrada_at IS NOT NULL", id, userId);
+      if (!jornada) return json({ error: "Jornada no encontrada" }, 404);
+      const abierta = await una(env, "SELECT id FROM jornadas WHERE user_id = ? AND cerrada_at IS NULL LIMIT 1", userId);
+      if (abierta && (await contarRegistros(env, userId, abierta.id)) > 0) {
+        return json({ error: "Hay registros sin registrar hoy. Pulsa REGISTRAR o vacía el día actual y vuelve a intentarlo." }, 409);
+      }
+      await env.DB.batch([
+        env.DB.prepare("DELETE FROM jornadas WHERE user_id = ? AND cerrada_at IS NULL").bind(userId),
+        env.DB.prepare("UPDATE jornadas SET cerrada_at = NULL WHERE id = ? AND user_id = ?").bind(id, userId),
+      ]);
+      return new Response(null, { status: 204 });
+    }
     if (req.method === "GET" && idValido) {
       const jornada = await una(env, `SELECT ${COLS_JORNADA} FROM jornadas WHERE id = ? AND user_id = ?`, id, userId);
       if (!jornada) return json({ error: "Jornada no encontrada" }, 404);
@@ -720,6 +744,13 @@ async function datos(req, env, ruta) {
     );
     if (!row) return json({ error: BLOQUEADO }, 409);
     return json(row);
+  }
+
+  if (req.method === "DELETE" && url.searchParams.has("vaciar")) {
+    // Borra todos los registros de la jornada abierta (para empezar el día de nuevo).
+    await ejecutar(env, "DELETE FROM movimientos WHERE user_id = ? AND jornada_id = ?", userId, abierta.id);
+    await ejecutar(env, "UPDATE jornadas SET te_tengo_manual = NULL, me_tienes_manual = NULL WHERE id = ? AND user_id = ?", abierta.id, userId);
+    return new Response(null, { status: 204 });
   }
 
   if (req.method === "DELETE") {

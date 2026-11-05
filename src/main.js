@@ -461,6 +461,7 @@ async function cargar() {
     pintar({ ...data.resumen, fecha }, data.pendientes ?? { teTengo: 0, meTienes: 0 });
     cargarTotalMes();
     movimientosDia = data.movimientos;
+    $("vaciar-dia").hidden = !data.movimientos.length;
     lista.innerHTML = "";
     if (!data.movimientos.length) { lista.innerHTML = '<li class="vacio">Aún no hay registros este día.</li>'; return; }
     for (const m of data.movimientos) {
@@ -654,7 +655,16 @@ $("ver-historico").addEventListener("click", async () => {
       const saldo = document.createElement("span");
       saldo.className = "saldo-h";
       saldo.textContent = `🤝 Te tengo ${fmt.format(j.teTengo)} · 🙋 Me tienes ${fmt.format(j.meTienes)}${j.manual ? " · ✍️ manual" : ""}`;
-      li.append(info, monto, saldo);
+      const acc = document.createElement("div");
+      acc.className = "acc-dia";
+      const corregir = document.createElement("button");
+      corregir.type = "button"; corregir.textContent = "✏️ Corregir";
+      corregir.addEventListener("click", (e) => { e.stopPropagation(); reabrirJornada(j); });
+      const borrar = document.createElement("button");
+      borrar.type = "button"; borrar.className = "peligro"; borrar.textContent = "🗑 Eliminar día";
+      borrar.addEventListener("click", (e) => { e.stopPropagation(); eliminarJornada(j); });
+      acc.append(corregir, borrar);
+      li.append(info, monto, saldo, acc);
       li.addEventListener("click", () => verJornada(j));
       lista.appendChild(li);
     }
@@ -662,6 +672,38 @@ $("ver-historico").addEventListener("click", async () => {
     if (err.message === "sesion") $("dlg-historico").close();
     else lista.innerHTML = '<li class="vacio">No se pudo cargar el histórico.</li>';
   }
+});
+
+async function eliminarJornada(j) {
+  if (!confirm(`¿Eliminar el día ${fechaLarga(diaDe(j))} (total ${fmt.format(j.total)})?\nSe borrará con todos sus registros y no se puede deshacer.`)) return;
+  try {
+    const res = await api("/api/jornadas?id=" + j.id, { method: "DELETE" });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "No se pudo eliminar el día");
+    avisar("🗑 Día eliminado", "ok");
+    $("dlg-historico").close();
+    cargar();
+  } catch (err) { if (err.message !== "sesion") avisar(err.message, "error"); }
+}
+
+async function reabrirJornada(j) {
+  if (!confirm(`¿Reabrir el día ${fechaLarga(diaDe(j))} para corregirlo?\nVolverá a la pantalla principal; allí puedes borrar o añadir registros y pulsar REGISTRAR de nuevo.`)) return;
+  try {
+    const res = await api("/api/jornadas?id=" + j.id, { method: "PATCH" });
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || "No se pudo reabrir el día");
+    avisar("✏️ Día reabierto: corrígelo y vuelve a pulsar REGISTRAR", "ok");
+    $("dlg-historico").close();
+    cargar();
+  } catch (err) { if (err.message !== "sesion") avisar(err.message, "error"); }
+}
+
+$("vaciar-dia").addEventListener("click", async () => {
+  if (!confirm("¿Borrar todos los registros de este día y empezar de nuevo?")) return;
+  try {
+    const res = await api("/api/movimientos?vaciar=1", { method: "DELETE" });
+    if (!res.ok) throw new Error();
+    avisar("Día vaciado", "ok");
+    cargar();
+  } catch (err) { if (err.message !== "sesion") avisar("No se pudo vaciar el día", "error"); }
 });
 
 async function verJornada(j) {

@@ -124,6 +124,10 @@
     #saldo-mensaje { margin: 0; min-height: 1rem; font-size: .85rem; color: var(--rojo); }
     .historico { max-height: 60vh; overflow-y: auto; }
     .historico li { background: #f6f4ec; cursor: pointer; flex-wrap: wrap; }
+    .historico li .acc-dia { display: flex; gap: .5rem; width: 100%; }
+    .historico li .acc-dia button { flex: 1; min-height: 44px; border-radius: 14px; border: 1.5px solid #d1d5db; background: #fff; font: 700 .85rem inherit; font-family: inherit; cursor: pointer; }
+    .historico li .acc-dia .peligro { color: #b42318; border-color: #f1b8b2; }
+    #vaciar-dia { margin: 0 0 .6rem; }
     .historico li .saldo-h { width: 100%; font-size: .8rem; color: var(--gris); }
     .boton .hoy { font-size: .75rem; color: var(--gris); }
     .abonos { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
@@ -353,6 +357,7 @@
     <p id="mensaje"></p>
 
     <h3 id="titulo-lista">Registros del día</h3>
+    <button class="secundario chico" id="vaciar-dia" type="button" hidden>🧹 Vaciar el día y empezar de nuevo</button>
     <ul id="lista"><li class="vacio">Cargando…</li></ul>
   </main>
 
