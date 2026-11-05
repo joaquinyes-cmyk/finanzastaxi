@@ -459,6 +459,7 @@ async function cargar() {
     $("aviso-dia-fecha").textContent = anterior ? fechaLarga(fecha) : "";
     $("titulo-lista").textContent = anterior ? "Registros del " + fechaLarga(fecha) : "Registros de hoy";
     pintar({ ...data.resumen, fecha }, data.pendientes ?? { teTengo: 0, meTienes: 0 });
+    cargarTotalMes();
     movimientosDia = data.movimientos;
     lista.innerHTML = "";
     if (!data.movimientos.length) { lista.innerHTML = '<li class="vacio">Aún no hay registros este día.</li>'; return; }
@@ -674,6 +675,45 @@ async function verJornada(j) {
     if (err.message !== "sesion") avisar("No se pudo abrir la jornada", "error");
   }
 }
+
+
+/* ---------- Total del mes (acumulado con puesta a cero) ---------- */
+// Suma los totales de las jornadas registradas del mes y la jornada abierta (si es del mes).
+// "Poner a cero" guarda lo acumulado en este aparato y a partir de ahí se muestra la diferencia.
+// No toca la base de datos: cierre de mes y resumen por fechas siguen sumando todo el mes.
+let totalMesBruto = 0;
+const claveMes = () => `finanzastaxi.totalmes.${usuario?.email || ""}.${hoy().slice(0, 7)}`;
+function baseMes() {
+  try { const v = JSON.parse(localStorage.getItem(claveMes()) || "null"); return v && Number.isFinite(v.base) ? v : { base: 0, desde: null }; }
+  catch { return { base: 0, desde: null }; }
+}
+function pintarTotalMes() {
+  const { base, desde } = baseMes();
+  const valor = Math.round((totalMesBruto - base) * 100) / 100;
+  $("v-totalmes").textContent = fmt.format(valor);
+  $("h-totalmes").textContent = desde ? "Desde el " + fechaLarga(desde) : "Todo el mes";
+  $("tm-valor").textContent = fmt.format(valor);
+  $("tm-detalle").textContent = desde ? "Puesto a cero el " + fechaLarga(desde) + "." : "Contando desde el 1 del mes.";
+}
+async function cargarTotalMes() {
+  try {
+    const res = await api("/api/jornadas?mes=" + hoy().slice(0, 7));
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    let total = Number(data.resumen?.total ?? 0);
+    const dia = jornadaActual?.fecha || hoy();
+    if (resumen && dia.slice(0, 7) === hoy().slice(0, 7)) total += Number(resumen.total || 0);
+    totalMesBruto = Math.round(total * 100) / 100;
+    pintarTotalMes();
+  } catch { /* sin conexión: se conserva el último valor */ }
+}
+$("b-totalmes").addEventListener("click", () => { pintarTotalMes(); $("dlg-totalmes").showModal(); });
+$("tm-reset").addEventListener("click", () => {
+  if (!confirm("¿Poner el total del mes a cero? El cierre de mes y el resumen por fechas no cambian.")) return;
+  try { localStorage.setItem(claveMes(), JSON.stringify({ base: totalMesBruto, desde: hoy() })); } catch {}
+  pintarTotalMes();
+  avisar("Total del mes puesto a cero", "ok");
+});
 
 /* ---------- Cierre de mes ---------- */
 const formMes = $("form-mes");
