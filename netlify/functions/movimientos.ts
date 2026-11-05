@@ -53,8 +53,14 @@ function totales(f: Sumas) {
 // otro socio; el efectivo (menos los gastos, que se pagan de él) lo guarda el
 // conductor, y lo ingresado en el banco se le entrega al otro socio.
 // Positivo = "Te tengo" (el conductor guarda dinero del otro); negativo = "Me tienes".
-const saldoAuto = (f: Sumas) =>
-  (Number(f.otros) + Number(f.efectivo) - Number(f.gastos) - Number(f.tarjeta)) / 2 - Number(f.banco);
+const aCent = (n: unknown) => Math.round(Number(n) * 100);
+// Se calcula en céntimos y la mitad se redondea hacia arriba (21,495 → 21,50), para que
+// «50 %» menos lo que guardas tú coincida exactamente con lo que se muestra.
+const saldoAuto = (f: Sumas) => {
+  const dif = aCent(f.otros) + aCent(f.efectivo) - aCent(f.gastos) - aCent(f.tarjeta);
+  const mitad = Math.sign(dif) * Math.ceil(Math.abs(dif) / 2);
+  return (mitad - aCent(f.banco)) / 100;
+};
 
 type Saldo = { teTengo: number; meTienes: number; manual: boolean };
 const separar = (saldo: number) => ({ teTengo: saldo > 0 ? saldo : 0, meTienes: saldo < 0 ? -saldo : 0 });
