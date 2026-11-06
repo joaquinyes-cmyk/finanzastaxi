@@ -38,7 +38,8 @@ const ESQUEMA = [
     cerrada_at TEXT,
     te_tengo_manual REAL,
     me_tienes_manual REAL,
-    fecha TEXT
+    fecha TEXT,
+    porcentaje REAL
   )`,
   `CREATE INDEX IF NOT EXISTS jornadas_user_cerrada_idx ON jornadas (user_id, cerrada_at)`,
   `CREATE UNIQUE INDEX IF NOT EXISTS jornadas_una_abierta_idx ON jornadas (user_id) WHERE cerrada_at IS NULL`,
@@ -69,7 +70,10 @@ const ESQUEMA = [
 let esquemaListo = null;
 function prepararEsquema(env) {
   if (!esquemaListo) {
-    esquemaListo = env.DB.batch(ESQUEMA.map((s) => env.DB.prepare(s))).catch((err) => {
+    esquemaListo = env.DB.batch(ESQUEMA.map((s) => env.DB.prepare(s)))
+      // Bases de datos creadas antes del porcentaje: se añade la columna una sola vez.
+      .then(() => env.DB.prepare("ALTER TABLE jornadas ADD COLUMN porcentaje REAL").run().catch(() => {}))
+      .catch((err) => {
       esquemaListo = null;
       throw err;
     });
@@ -361,7 +365,8 @@ function fechaValida(v) {
 // Columnas con los mismos nombres y formatos que devuelve la versión de Netlify.
 const dinero = (col) => `CASE WHEN ${col} IS NULL THEN NULL ELSE printf('%.2f', ${col}) END`;
 const COLS_JORNADA = `id, user_id AS userId, abierta_at AS abiertaAt, cerrada_at AS cerradaAt,
-  ${dinero("te_tengo_manual")} AS teTengoManual, ${dinero("me_tienes_manual")} AS meTienesManual, fecha`;
+  ${dinero("te_tengo_manual")} AS teTengoManual, ${dinero("me_tienes_manual")} AS meTienesManual, fecha,
+  coalesce(porcentaje, 50) AS porcentaje`;
 const COLS_MOV = `id, user_id AS userId, jornada_id AS jornadaId, tipo, printf('%.2f', monto) AS monto, fecha, nota, created_at AS createdAt`;
 const COLS_PAGO = `id, user_id AS userId, tipo, printf('%.2f', monto) AS monto, nota, created_at AS createdAt`;
 // Día de una jornada: el cargado o, en las antiguas, el día en que se registró.
@@ -379,10 +384,14 @@ const SUMAS = [
 // Lo ganado suma los ingresos generales, en efectivo y con tarjeta.
 const ganado = (f) => Number(f.otros) + Number(f.efectivo) + Number(f.tarjeta);
 
-function totales(f) {
+// Porcentaje de lo ganado que le toca al conductor ese día (50 si no se eligió otro).
+const pctDe = (p) => (Number.isFinite(Number(p)) && Number(p) > 0 && Number(p) <= 100 ? Number(p) : 50);
+
+function totales(f, porcentaje = 50) {
   const ingresos = ganado(f);
   const gastos = Number(f.gastos);
   const total = ingresos - gastos;
+  const pct = pctDe(porcentaje);
   return {
     ingresos,
     otros: Number(f.otros),
@@ -391,7 +400,8 @@ function totales(f) {
     gastos,
     banco: Number(f.banco),
     total,
-    mitad: total / 2,
+    porcentaje: pct,
+    mitad: Math.round(total * pct) / 100,
   };
 }
 
@@ -403,10 +413,11 @@ function totales(f) {
 const aCent = (n) => Math.round(Number(n) * 100);
 // Se calcula en céntimos y la mitad se redondea hacia arriba (21,495 → 21,50), para que
 // «50 %» menos lo que guardas tú coincida exactamente con lo que se muestra.
-const saldoAuto = (f) => {
-  const dif = aCent(f.otros) + aCent(f.efectivo) - aCent(f.gastos) - aCent(f.tarjeta);
-  const mitad = Math.sign(dif) * Math.ceil(Math.abs(dif) / 2);
-  return (mitad - aCent(f.banco)) / 100;
+const saldoAuto = (f, porcentaje = 50) => {
+  const guarda = aCent(f.otros) + aCent(f.efectivo) - aCent(f.gastos); // lo que guarda el conductor
+  const total = guarda + aCent(f.tarjeta);
+  const suyo = Math.sign(total) * Math.round(Math.abs(total) * pctDe(porcentaje) / 100 + 1e-9); // su parte
+  return (guarda - suyo - aCent(f.banco)) / 100;
 };
 const separar = (saldo) => ({ teTengo: saldo > 0 ? saldo : 0, meTienes: saldo < 0 ? -saldo : 0 });
 
@@ -414,7 +425,7 @@ const separar = (saldo) => ({ teTengo: saldo > 0 ? saldo : 0, meTienes: saldo < 
 // sale solo de sus registros, o de los valores cargados a mano si los tiene.
 async function saldos(env, userId) {
   const porJornada = await todas(env, `SELECT m.jornada_id AS jornadaId, ${SUMAS} FROM movimientos m WHERE m.user_id = ? GROUP BY m.jornada_id`, userId);
-  const lista = await todas(env, "SELECT id, te_tengo_manual AS te, me_tienes_manual AS me FROM jornadas WHERE user_id = ?", userId);
+  const lista = await todas(env, "SELECT id, te_tengo_manual AS te, me_tienes_manual AS me, porcentaje FROM jornadas WHERE user_id = ?", userId);
   const sumasDe = new Map(porJornada.map((f) => [f.jornadaId, f]));
   const resultado = new Map();
   for (const j of lista) {
@@ -423,7 +434,7 @@ async function saldos(env, userId) {
       continue;
     }
     const f = sumasDe.get(j.id);
-    resultado.set(j.id, { ...separar(f ? saldoAuto(f) : 0), manual: false });
+    resultado.set(j.id, { ...separar(f ? saldoAuto(f, j.porcentaje) : 0), manual: false });
   }
   return resultado;
 }
@@ -458,7 +469,8 @@ const totalesPendientes = async (env, userId) => {
 async function resumen(env, userId, jornadaId) {
   const jor = await una(env, `SELECT ${SUMAS} FROM movimientos m WHERE m.user_id = ? AND m.jornada_id = ?`, userId, jornadaId);
   const saldo = (await saldos(env, userId)).get(jornadaId) ?? { teTengo: 0, meTienes: 0, manual: false };
-  return { ...totales(jor), ...saldo };
+  const pct = (await una(env, "SELECT porcentaje FROM jornadas WHERE id = ? AND user_id = ?", jornadaId, userId))?.porcentaje;
+  return { ...totales(jor, pct), ...saldo };
 }
 
 // Devuelve la jornada abierta del usuario, creándola si no existe.
@@ -587,7 +599,7 @@ async function datos(req, env, ruta) {
       const orden = rango ? "ASC" : "DESC";
       const filas = await todas(
         env,
-        `SELECT j.id, ${DIA_JORNADA} AS dia, j.abierta_at AS abiertaAt, j.cerrada_at AS cerradaAt, ${SUMAS}
+        `SELECT j.id, ${DIA_JORNADA} AS dia, j.porcentaje AS pct, j.abierta_at AS abiertaAt, j.cerrada_at AS cerradaAt, ${SUMAS}
          FROM jornadas j LEFT JOIN movimientos m ON m.jornada_id = j.id
          WHERE j.user_id = ? AND j.cerrada_at IS NOT NULL ${rango ? `AND ${DIA_JORNADA} BETWEEN ? AND ?` : ""}
          GROUP BY j.id
@@ -601,12 +613,14 @@ async function datos(req, env, ruta) {
         fecha: f.dia,
         abiertaAt: f.abiertaAt,
         cerradaAt: f.cerradaAt,
-        ...totales(f),
+        ...totales(f, f.pct),
         ...(saldoDe.get(f.id) ?? { teTengo: 0, meTienes: 0, manual: false }),
       }));
       if (!rango) return json({ jornadas: lista });
       const suma = (k) => Math.round(lista.reduce((t, j) => t + j[k], 0) * 100) / 100;
       const t = totales({ otros: suma("otros"), efectivo: suma("efectivo"), tarjeta: suma("tarjeta"), gastos: suma("gastos"), banco: suma("banco") });
+      t.mitad = suma("mitad"); // cada jornada con su porcentaje
+      t.porcentaje = null;
       const abierta = await jornadaAbierta(env, userId);
       const sinRegistrar = await contarRegistros(env, userId, abierta.id);
       const diaAbierta = abierta.fecha ?? hoy();
@@ -648,6 +662,8 @@ async function datos(req, env, ruta) {
       const cerrada = cierre.results[0];
       if (!cerrada) return json({ error: YA_REGISTRADA }, 409);
       const nueva = await jornadaAbierta(env, userId);
+      // La jornada nueva sigue con el mismo porcentaje.
+      await ejecutar(env, "UPDATE jornadas SET porcentaje = (SELECT porcentaje FROM jornadas WHERE id = ?) WHERE id = ? AND user_id = ?", cerrada.id, nueva.id, userId);
       return json({ cerrada, nueva }, 201);
     }
     if (req.method === "PUT") {
@@ -655,6 +671,13 @@ async function datos(req, env, ruta) {
       const body = await req.json().catch(() => null);
       const abierta = await jornadaAbierta(env, userId);
       if (Number(body?.jornadaId) !== abierta.id) return json({ error: YA_REGISTRADA }, 409);
+      if (body && "porcentaje" in body) {
+        // Porcentaje que le toca al conductor en esta jornada.
+        const pct = Number(body.porcentaje);
+        if (!Number.isFinite(pct) || pct < 1 || pct > 100) return json({ error: "Escribe un porcentaje entre 1 y 100" }, 400);
+        await ejecutar(env, "UPDATE jornadas SET porcentaje = ? WHERE id = ? AND user_id = ? AND cerrada_at IS NULL", Math.round(pct * 100) / 100, abierta.id, userId);
+        return json({ resumen: await resumen(env, userId, abierta.id) });
+      }
       if (body && "fecha" in body) {
         // Cambiar el día de la jornada abierta (para cargar un día anterior).
         const fecha = fechaValida(body.fecha);
