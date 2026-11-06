@@ -234,6 +234,7 @@ function mostrarApp(user) {
 
 alCerrarSesion(() => {
   usuario = null;
+  $("dlg-porcentaje").close();
   resumen = null;
   movimientosDia = [];
   mostrarAuth();
@@ -757,6 +758,8 @@ $("form-porcentaje").addEventListener("submit", async (e) => {
 });
 // Se pregunta una vez al día (la primera vez que se entra ese día en este aparato).
 function preguntarPorcentaje() {
+  // Solo dentro de la app: con la sesión iniciada y la jornada cargada (nunca sobre la pantalla de acceso).
+  if (!usuario || $("app").hidden || !jornadaActual || !resumen) return;
   const clave = `finanzastaxi.pct.${usuario?.email || ""}`;
   try { if (localStorage.getItem(clave) === hoy()) return; localStorage.setItem(clave, hoy()); } catch {}
   abrirPorcentaje();
