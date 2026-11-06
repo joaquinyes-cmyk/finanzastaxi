@@ -229,7 +229,7 @@ function mostrarApp(user) {
   const nombreCompleto = user.user_metadata?.full_name || "";
   $("usuario-email").textContent = nombreCompleto ? `${nombreCompleto} · ${user.email || ""}` : user.email || "";
   avisarAuth("");
-  cargar();
+  cargar().then(preguntarPorcentaje);
 }
 
 alCerrarSesion(() => {
@@ -333,7 +333,7 @@ document.querySelectorAll("[data-info]").forEach((b) => b.addEventListener("clic
   const r = resumen;
   const textos = {
     total: ["Total del día", `${r.otros ? `Otros ingresos ${fmt.format(r.otros)} + ` : ""}Efectivo ${fmt.format(r.efectivo)} + Tarjeta ${fmt.format(r.tarjeta)} − Gastos ${fmt.format(r.gastos)} = ${fmt.format(r.total)}`],
-    mitad: ["50% del total", `La mitad del total del día (${fmt.format(r.total)}) es ${fmt.format(r.mitad)}.`],
+    mitad: [`${pctTxt(r)} del total`, `Tu ${pctTxt(r)} del total del día (${fmt.format(r.total)}) es ${fmt.format(r.mitad)}. Toca para cambiar el porcentaje.`],
   };
   const [titulo, texto] = textos[b.dataset.info];
   $("info-titulo").textContent = titulo;
@@ -352,9 +352,9 @@ function explicarSaldo(r) {
 
 function explicarJornada(r) {
   if (r.manual) return "Valores de esta jornada cargados a mano.";
-  const base = "La tarjeta la cobra el otro socio y el efectivo (menos gastos) lo guardas tú; a cada uno le toca el 50%.";
-  if (r.teTengo > 0) return `${base} Tienes más efectivo que tu 50%, así que le tienes ${fmt.format(r.teTengo)} al otro socio (ya descontado lo ingresado en el banco).`;
-  if (r.meTienes > 0) return `${base} Lo cobrado con tarjeta supera su 50%, así que el otro socio te tiene ${fmt.format(r.meTienes)}.`;
+  const base = `La tarjeta la cobra el otro socio y el efectivo (menos gastos) lo guardas tú; a ti te toca el ${pctTxt(r)} y al otro socio el resto.`;
+  if (r.teTengo > 0) return `${base} Tienes más efectivo que tu ${pctTxt(r)}, así que le tienes ${fmt.format(r.teTengo)} al otro socio (ya descontado lo ingresado en el banco).`;
+  if (r.meTienes > 0) return `${base} Lo cobrado con tarjeta supera su parte, así que el otro socio te tiene ${fmt.format(r.meTienes)}.`;
   return `${base} En esta jornada están a mano.`;
 }
 
@@ -428,6 +428,8 @@ async function borrar(m) {
   } catch { /* sesión terminada: ya se muestra el acceso */ }
 }
 
+const pctTxt = (r) => `${String(Number(r.porcentaje ?? 50)).replace(".", ",")}%`;
+
 function pintar(r, pend) {
   resumen = r;
   pendientes = pend;
@@ -437,6 +439,7 @@ function pintar(r, pend) {
   $("v-banco").textContent = fmt.format(r.banco);
   $("v-total").textContent = fmt.format(r.total);
   $("v-mitad").textContent = fmt.format(r.mitad);
+  $("n-mitad").textContent = "½ " + pctTxt(r);
   pintarPendientes(pend);
   $("h-tetengo").textContent = "Hoy: " + fmt.format(r.teTengo);
   $("h-metienes").textContent = "Hoy: " + fmt.format(r.meTienes);
@@ -719,6 +722,46 @@ async function verJornada(j) {
 }
 
 
+
+/* ---------- Porcentaje de la jornada ---------- */
+$("b-mitad").addEventListener("click", () => abrirPorcentaje());
+const dlgPct = $("dlg-porcentaje");
+const pctInput = $("pct-input");
+function marcarPct() {
+  dlgPct.querySelectorAll("[data-pct]").forEach((b) => b.classList.toggle("sel", Number(b.dataset.pct) === Number(pctInput.value)));
+}
+function abrirPorcentaje() {
+  pctInput.value = String(resumen?.porcentaje ?? 50);
+  $("pct-mensaje").textContent = "";
+  marcarPct();
+  dlgPct.showModal();
+}
+dlgPct.querySelectorAll("[data-pct]").forEach((b) => b.addEventListener("click", () => { pctInput.value = b.dataset.pct; marcarPct(); }));
+pctInput.addEventListener("input", marcarPct);
+$("form-porcentaje").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const pct = Number(pctInput.value);
+  if (!Number.isFinite(pct) || pct < 1 || pct > 100) { $("pct-mensaje").textContent = "Escribe un porcentaje entre 1 y 100."; return; }
+  try {
+    const res = await api("/api/jornadas", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jornadaId: jornadaActual.id, porcentaje: pct }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "No se pudo guardar el porcentaje");
+    dlgPct.close();
+    avisar(`Trabajas al ${pctTxt({ porcentaje: pct })} hoy`, "ok");
+    cargar();
+  } catch (err) { if (err.message !== "sesion") $("pct-mensaje").textContent = err.message; }
+});
+// Se pregunta una vez al día (la primera vez que se entra ese día en este aparato).
+function preguntarPorcentaje() {
+  const clave = `finanzastaxi.pct.${usuario?.email || ""}`;
+  try { if (localStorage.getItem(clave) === hoy()) return; localStorage.setItem(clave, hoy()); } catch {}
+  abrirPorcentaje();
+}
+
 /* ---------- Total del mes (acumulado con puesta a cero) ---------- */
 // Suma los totales de las jornadas registradas del mes y la jornada abierta (si es del mes).
 // "Poner a cero" guarda lo acumulado en este aparato y a partir de ahí se muestra la diferencia.
@@ -851,7 +894,7 @@ function reciboPeriodo(data, titulo, periodo, nombre) {
     { texto: "Ingresos", monto: fmt.format(r.ingresos) },
     { texto: "Gastos", monto: "−" + fmt.format(r.gastos) },
     { texto: `Total del ${nombre}`, monto: fmt.format(r.total), fuerte: true },
-    { texto: "50%", monto: fmt.format(r.mitad), fuerte: true },
+    { texto: r.porcentaje ? pctTxt(r) : "Mi parte", monto: fmt.format(r.mitad), fuerte: true },
     { texto: "Ingreso en banco", monto: fmt.format(r.banco) },
     ...(data.jornadas.length ? [{ texto: "Promedio por día", monto: fmt.format(r.dias ? r.total / r.dias : 0) }] : []),
     { sep: true },
@@ -914,7 +957,7 @@ function reciboJornada(r, movs, fecha, titulo) {
     { texto: "Ingresos", monto: fmt.format(r.ingresos) },
     { texto: "Gastos", monto: "−" + fmt.format(r.gastos) },
     { texto: "Total del día", monto: fmt.format(r.total), fuerte: true },
-    { texto: "50%", monto: fmt.format(r.mitad), fuerte: true },
+    { texto: r.porcentaje ? pctTxt(r) : "Mi parte", monto: fmt.format(r.mitad), fuerte: true },
     { texto: "Ingreso en banco", monto: fmt.format(r.banco) },
     { sep: true },
     { texto: "Te tengo", monto: fmt.format(r.teTengo), fuerte: r.teTengo > 0 },

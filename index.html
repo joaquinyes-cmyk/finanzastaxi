@@ -127,6 +127,8 @@
     .historico li .acc-dia { display: flex; gap: .5rem; width: 100%; }
     .historico li .acc-dia button { flex: 1; min-height: 44px; border-radius: 14px; border: 1.5px solid #d1d5db; background: #fff; font: 700 .85rem inherit; font-family: inherit; cursor: pointer; }
     .historico li .acc-dia .peligro { color: #b42318; border-color: #f1b8b2; }
+    .pct-rapidos { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; margin: .6rem 0; }
+    .pct-rapidos .chico.sel { background: var(--negro); color: var(--amarillo); }
     #vaciar-dia { margin: 0 0 .6rem; }
     .historico li .saldo-h { width: 100%; font-size: .8rem; color: var(--gris); }
     .boton .hoy { font-size: .75rem; color: var(--gris); }
@@ -332,8 +334,8 @@
         <span class="nombre">🙋 Me tienes <small class="marca-manual" hidden>✍️ manual</small></span><span class="valor" id="v-metienes">0,00</span>
         <span class="hoy" id="h-metienes">Hoy: 0,00</span>
       </button>
-      <button class="boton mitad" data-info="mitad" type="button">
-        <span class="nombre">½ 50%</span><span class="valor" id="v-mitad">0,00</span>
+      <button class="boton mitad" id="b-mitad" type="button" title="Toca para cambiar el porcentaje de hoy">
+        <span class="nombre" id="n-mitad">½ 50%</span><span class="valor" id="v-mitad">0,00</span>
       </button>
     </section>
     <section class="abonos">
@@ -578,6 +580,28 @@
         <button class="principal" type="button" data-cerrar>Cerrar</button>
       </div>
     </div>
+  </dialog>
+
+  <dialog id="dlg-porcentaje">
+    <form method="dialog" id="form-porcentaje">
+      <h2>¿A qué porcentaje trabajas hoy?</h2>
+      <p class="detalle">Es lo que te toca a ti de lo ganado (después de gastos). Con él se calcula «Te tengo» y «Me tienes».</p>
+      <div class="pct-rapidos">
+        <button type="button" class="chico secundario" data-pct="40">40 %</button>
+        <button type="button" class="chico secundario" data-pct="45">45 %</button>
+        <button type="button" class="chico secundario" data-pct="50">50 %</button>
+        <button type="button" class="chico secundario" data-pct="55">55 %</button>
+        <button type="button" class="chico secundario" data-pct="60">60 %</button>
+      </div>
+      <label>Otro porcentaje
+        <input name="pct" id="pct-input" type="number" step="0.5" min="1" max="100" inputmode="decimal" required />
+      </label>
+      <p id="pct-mensaje" class="error"></p>
+      <div class="acciones">
+        <button class="secundario" type="button" data-cerrar>Ahora no</button>
+        <button class="principal" type="submit">Guardar</button>
+      </div>
+    </form>
   </dialog>
 
   <dialog id="dlg-info">
