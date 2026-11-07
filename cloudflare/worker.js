@@ -408,7 +408,7 @@ function totales(f, porcentaje = 50) {
 // Saldo automático entre socios de un grupo de registros, visto desde el conductor.
 // Cada socio se queda con el 50% de lo ganado. Lo cobrado con tarjeta lo recibe el
 // otro socio; el efectivo (menos los gastos, que se pagan de él) lo guarda el
-// conductor, y lo ingresado en el banco se le entrega al otro socio.
+// conductor, y lo ingresado en el banco rebaja la deuda de quien deba (ver abajo).
 // Positivo = "Te tengo" (el conductor guarda dinero del otro); negativo = "Me tienes".
 const aCent = (n) => Math.round(Number(n) * 100);
 // Se calcula en céntimos y la mitad se redondea hacia arriba (21,495 → 21,50), para que
@@ -417,7 +417,10 @@ const saldoAuto = (f, porcentaje = 50) => {
   const guarda = aCent(f.otros) + aCent(f.efectivo) - aCent(f.gastos); // lo que guarda el conductor
   const total = guarda + aCent(f.tarjeta);
   const suyo = Math.sign(total) * Math.round(Math.abs(total) * pctDe(porcentaje) / 100 + 1e-9); // su parte
-  return (guarda - suyo - aCent(f.banco)) / 100;
+  const base = guarda - suyo; // saldo antes de lo ingresado en el banco
+  // Lo ingresado en el banco siempre rebaja la deuda: en «Te tengo» lo ingresa el conductor
+  // y baja lo que debe; en «Me tienes» lo ingresa el otro socio y baja lo que te debe.
+  return (base - (base < 0 ? -1 : 1) * aCent(f.banco)) / 100;
 };
 const separar = (saldo) => ({ teTengo: saldo > 0 ? saldo : 0, meTienes: saldo < 0 ? -saldo : 0 });
 
