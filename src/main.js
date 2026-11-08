@@ -362,41 +362,8 @@ function explicarJornada(r) {
 document.querySelectorAll("[data-saldo]").forEach((b) => b.addEventListener("click", () => {
   if (!resumen || !jornadaActual) return;
   $("saldo-explicacion").textContent = explicarSaldo(resumen);
-  $("saldo-mensaje").textContent = "";
-  formSaldo.teTengo.value = resumen.manual ? resumen.teTengo : "";
-  formSaldo.meTienes.value = resumen.manual ? resumen.meTienes : "";
-  formSaldo.teTengo.placeholder = resumen.manual ? "" : fmt.format(resumen.teTengo);
-  formSaldo.meTienes.placeholder = resumen.manual ? "" : fmt.format(resumen.meTienes);
-  $("saldo-auto").hidden = !resumen.manual;
   $("dlg-saldo").showModal();
-  formSaldo[b.dataset.saldo].focus();
 }));
-
-async function guardarSaldo(teTengo, meTienes) {
-  try {
-    const res = await api("/api/jornadas", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ jornadaId: jornadaActual.id, teTengo, meTienes }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || "No se pudo guardar");
-    $("dlg-saldo").close();
-    avisar(teTengo == null && meTienes == null ? "Saldo en cálculo automático" : "✅ Saldo cargado a mano", "ok");
-    cargar();
-  } catch (err) {
-    if (err.message === "sesion") $("dlg-saldo").close();
-    else $("saldo-mensaje").textContent = err.message;
-  }
-}
-
-formSaldo.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const te = formSaldo.teTengo.value.trim();
-  const me = formSaldo.meTienes.value.trim();
-  guardarSaldo(te || (me ? 0 : null), me || (te ? 0 : null));
-});
-$("saldo-auto").addEventListener("click", () => guardarSaldo(null, null));
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
