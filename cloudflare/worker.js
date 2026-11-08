@@ -432,10 +432,7 @@ async function saldos(env, userId) {
   const sumasDe = new Map(porJornada.map((f) => [f.jornadaId, f]));
   const resultado = new Map();
   for (const j of lista) {
-    if (j.te != null || j.me != null) {
-      resultado.set(j.id, { teTengo: Number(j.te ?? 0), meTienes: Number(j.me ?? 0), manual: true });
-      continue;
-    }
+    // Siempre automático: los valores cargados a mano en versiones anteriores ya no se usan.
     const f = sumasDe.get(j.id);
     resultado.set(j.id, { ...separar(f ? saldoAuto(f, j.porcentaje) : 0), manual: false });
   }

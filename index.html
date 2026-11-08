@@ -438,21 +438,10 @@
     <form id="form-saldo">
       <h2>🤝 Te tengo / 🙋 Me tienes</h2>
       <p class="detalle" id="saldo-explicacion"></p>
-      <div class="dos-columnas">
-        <label>Te tengo
-          <input name="teTengo" type="number" step="0.01" min="0" inputmode="decimal" />
-        </label>
-        <label>Me tienes
-          <input name="meTienes" type="number" step="0.01" min="0" inputmode="decimal" />
-        </label>
-      </div>
-      <p class="ayuda-saldo">Escribe los montos para cargarlos a mano en esta jornada. Deja ambas casillas vacías para usar el cálculo automático. Al registrar la jornada, lo pendiente no se borra: solo baja con «Te he pagado» o «Me has pagado».</p>
-      <p id="saldo-mensaje" class="error"></p>
+      <p class="ayuda-saldo">Se calcula solo con lo que registras: efectivo + tarjeta − gastos, según tu porcentaje. Lo pendiente no se borra al registrar la jornada: solo baja con «Te he pagado» o «Me has pagado».</p>
       <div class="acciones">
-        <button class="secundario" type="button" data-cerrar>Cancelar</button>
-        <button class="principal" type="submit">Guardar</button>
+        <button class="principal" type="button" data-cerrar>Cerrar</button>
       </div>
-      <button type="button" class="enlace" id="saldo-auto">↺ Volver al cálculo automático</button>
     </form>
   </dialog>
 
