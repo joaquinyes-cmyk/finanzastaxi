@@ -512,7 +512,13 @@ async function datos(req, env, ruta) {
   if (ruta === "/api/me-tienes" || ruta === "/api/pagos") {
     if (req.method === "GET") {
       const pagos = await todas(env, `SELECT ${COLS_PAGO} FROM pagos_socio WHERE user_id = ? ORDER BY created_at DESC, id DESC LIMIT 100`, userId);
-      return json({ ...(await pendientes(env, userId)), pagos });
+      // Lo abonado en un mes (?mes=AAAA-MM; por defecto el actual): cuánto me han pagado y cuánto he pagado.
+      const mesPedido = url.searchParams.get("mes");
+      const mes = /^\d{4}-(0[1-9]|1[0-2])$/.test(mesPedido ?? "") ? mesPedido : hoy().slice(0, 7);
+      const delMes = await todas(env, `SELECT ${COLS_PAGO} FROM pagos_socio WHERE user_id = ? AND monto > 0 AND substr(created_at, 1, 7) = ? ORDER BY created_at DESC, id DESC`, userId, mes);
+      const suma = (tipo) => Math.round(delMes.filter((p) => p.tipo === tipo).reduce((t, p) => t + Number(p.monto), 0) * 100) / 100;
+      const pagadoMes = { mes, meHanPagado: suma("me_tienes"), tePague: suma("te_tengo"), pagos: delMes };
+      return json({ ...(await pendientes(env, userId)), pagos, pagadoMes });
     }
     if (req.method === "POST") {
       // { cuenta, pago } abona a esa cuenta; { cuenta, total } fija el pendiente a mano.

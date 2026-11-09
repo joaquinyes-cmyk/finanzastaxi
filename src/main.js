@@ -732,6 +732,51 @@ function preguntarPorcentaje() {
   abrirPorcentaje();
 }
 
+
+/* ---------- Pagos del mes (cuánto me han pagado) ---------- */
+let mesPagos = hoy().slice(0, 7);
+const mesNombre = (m) => new Date(m + "-15T12:00:00").toLocaleDateString("es", { month: "long", year: "numeric" });
+const moverMes = (m, d) => { const [a, n] = m.split("-").map(Number); const f = new Date(a, n - 1 + d, 1); return `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, "0")}`; };
+async function cargarPagadoMes() {
+  $("pg-mes").textContent = mesNombre(mesPagos);
+  $("pg-sig").disabled = mesPagos >= hoy().slice(0, 7);
+  const lista = $("pg-lista");
+  lista.innerHTML = '<li class="vacio">Cargando…</li>';
+  try {
+    const res = await api("/api/pagos?mes=" + mesPagos);
+    if (!res.ok) throw new Error();
+    const d = (await res.json()).pagadoMes;
+    if (!d) throw new Error();
+    $("pg-total").textContent = fmt.format(d.meHanPagado);
+    $("pg-otro").textContent = `Tú has pagado en el mes: ${fmt.format(d.tePague)}`;
+    lista.innerHTML = "";
+    const mios = d.pagos.filter((p) => p.tipo === "me_tienes");
+    if (!mios.length) lista.innerHTML = '<li class="vacio">No hay pagos recibidos este mes.</li>';
+    for (const p of mios) {
+      const li = document.createElement("li");
+      const info = document.createElement("div");
+      info.className = "info";
+      info.textContent = p.nota || "Me has pagado";
+      const sm = document.createElement("small");
+      sm.textContent = new Date(p.createdAt).toLocaleString("es", { dateStyle: "short", timeStyle: "short" });
+      info.appendChild(sm);
+      const monto = document.createElement("span");
+      monto.className = "monto";
+      monto.textContent = fmt.format(Number(p.monto));
+      li.append(info, monto);
+      lista.appendChild(li);
+    }
+  } catch (err) {
+    if (err.message === "sesion") $("dlg-pagado").close();
+    else lista.innerHTML = '<li class="vacio">No se pudo cargar.</li>';
+  }
+}
+function abrirPagado() { mesPagos = hoy().slice(0, 7); $("dlg-pagado").showModal(); cargarPagadoMes(); }
+$("ver-pagado").addEventListener("click", abrirPagado);
+$("pagado-historico").addEventListener("click", abrirPagado);
+$("pg-ant").addEventListener("click", () => { mesPagos = moverMes(mesPagos, -1); cargarPagadoMes(); });
+$("pg-sig").addEventListener("click", () => { mesPagos = moverMes(mesPagos, 1); cargarPagadoMes(); });
+
 /* ---------- Total del mes (acumulado con puesta a cero) ---------- */
 // Suma los totales de las jornadas registradas del mes y la jornada abierta (si es del mes).
 // "Poner a cero" guarda lo acumulado en este aparato y a partir de ahí se muestra la diferencia.

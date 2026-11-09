@@ -129,6 +129,8 @@
     .historico li .acc-dia .peligro { color: #b42318; border-color: #f1b8b2; }
     .pct-rapidos { display: grid; grid-template-columns: repeat(5, 1fr); gap: .4rem; margin: .6rem 0; }
     .pct-rapidos .chico.sel { background: var(--negro); color: var(--amarillo); }
+    .mes-nav { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .4rem; }
+    .mes-nav strong { text-transform: capitalize; }
     #vaciar-dia { margin: 0 0 .6rem; }
     .historico li .saldo-h { width: 100%; font-size: .8rem; color: var(--gris); }
     .boton .hoy { font-size: .75rem; color: var(--gris); }
@@ -346,6 +348,7 @@
         <span class="nombre">💵 ME HAS PAGADO</span><small>Descuenta de «Me tienes»</small>
       </button>
     </section>
+    <button type="button" class="btn-recibo" id="ver-pagado" style="width:100%">💶 Cuánto me han pagado (mes)</button>
     <div class="dos-columnas">
       <button type="button" class="btn-recibo" id="recibo-dia">🧾 Recibo del día</button>
       <button type="button" class="btn-recibo" id="ver-historico">📚 Histórico</button>
@@ -473,9 +476,26 @@
     </div>
   </dialog>
 
+  <dialog id="dlg-pagado">
+    <div class="contenido">
+      <h2>💶 Pagos del mes</h2>
+      <div class="mes-nav">
+        <button type="button" class="chico secundario" id="pg-ant" aria-label="Mes anterior">‹</button>
+        <strong id="pg-mes"></strong>
+        <button type="button" class="chico secundario" id="pg-sig" aria-label="Mes siguiente">›</button>
+      </div>
+      <p class="detalle">Me han pagado</p>
+      <p class="total-grande" id="pg-total">0,00</p>
+      <p class="detalle" id="pg-otro"></p>
+      <ul id="pg-lista" class="historico"></ul>
+      <div class="acciones"><button class="principal" type="button" data-cerrar>Cerrar</button></div>
+    </div>
+  </dialog>
+
   <dialog id="dlg-historico">
     <div class="contenido">
       <h2>📚 Histórico de jornadas</h2>
+      <button type="button" class="btn-recibo" id="pagado-historico" style="width:100%;margin-bottom:.6rem">💶 Cuánto me han pagado (mes)</button>
       <ul id="lista-historico" class="historico"><li class="vacio">Cargando…</li></ul>
       <div class="acciones"><button class="secundario" type="button" data-cerrar>Cerrar</button></div>
     </div>
