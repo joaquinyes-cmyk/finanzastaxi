@@ -131,6 +131,7 @@
     .pct-rapidos .chico.sel { background: var(--negro); color: var(--amarillo); }
     .mes-nav { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-bottom: .4rem; }
     .mes-nav strong { text-transform: capitalize; }
+    .resumen-mes { margin: .2rem 0 .8rem; padding: .7rem .9rem; border-radius: 16px; background: var(--crema); font-weight: 700; }
     #vaciar-dia { margin: 0 0 .6rem; }
     .historico li .saldo-h { width: 100%; font-size: .8rem; color: var(--gris); }
     .boton .hoy { font-size: .75rem; color: var(--gris); }
@@ -454,6 +455,7 @@
       <p class="ayuda-saldo" id="ab-pendiente-txt">Pendiente</p>
       <p class="total-grande" id="mt-total">0,00</p>
       <p class="ayuda-saldo" id="mt-detalle"></p>
+      <p class="resumen-mes" id="ab-mes" hidden></p>
       <form class="fila-input" id="form-pago">
         <label id="ab-etiqueta">Monto pagado
           <input name="pago" type="number" step="0.01" min="0.01" inputmode="decimal" required />
