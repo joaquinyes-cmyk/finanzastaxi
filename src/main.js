@@ -511,6 +511,14 @@ function pintarAbonos(data) {
   $("mt-total").textContent = fmt.format(c.total);
   $("mt-detalle").textContent =
     `Suma de "${cuentaAbono === "teTengo" ? "Te tengo" : "Me tienes"}" de todas las jornadas: ${fmt.format(c.suma)} · Abonado / ajustado: ${fmt.format(c.pagado)}`;
+  // Lo abonado en el mes actual (me han pagado / he pagado), según la cuenta que se abre.
+  const pm = data.pagadoMes;
+  const lineaMes = $("ab-mes");
+  lineaMes.hidden = !pm;
+  if (pm) {
+    const esMe = cuentaAbono === "meTienes";
+    lineaMes.textContent = `${esMe ? "Me has pagado" : "Has pagado"} en ${mesNombre(pm.mes)}: ${fmt.format(esMe ? pm.meHanPagado : pm.tePague)}`;
+  }
   const lista = $("lista-pagos");
   lista.innerHTML = "";
   const pagos = (data.pagos || []).filter((p) => (TIPO_CUENTA[p.tipo] || "meTienes") === cuentaAbono);
