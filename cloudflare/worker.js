@@ -414,8 +414,10 @@ const aCent = (n) => Math.round(Number(n) * 100);
 // Se calcula en céntimos y la mitad se redondea hacia arriba (21,495 → 21,50), para que
 // «50 %» menos lo que guardas tú coincida exactamente con lo que se muestra.
 const saldoAuto = (f, porcentaje = 50) => {
-  const guarda = aCent(f.otros) + aCent(f.efectivo) - aCent(f.gastos); // lo que guarda el conductor
-  const total = guarda + aCent(f.tarjeta);
+  // El conductor guarda el efectivo; el socio recibe la tarjeta. Los gastos se reparten según el
+  // porcentaje (a 50 %, mitad cada uno): se restan del total y no del efectivo que guarda.
+  const guarda = aCent(f.otros) + aCent(f.efectivo); // lo que guarda el conductor
+  const total = guarda + aCent(f.tarjeta) - aCent(f.gastos);
   const suyo = Math.sign(total) * Math.round(Math.abs(total) * pctDe(porcentaje) / 100 + 1e-9); // su parte
   const base = guarda - suyo; // saldo antes de lo ingresado en el banco
   // Lo ingresado en el banco siempre rebaja la deuda: en «Te tengo» lo ingresa el conductor
