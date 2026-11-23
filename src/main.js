@@ -431,6 +431,7 @@ async function cargar() {
     $("titulo-lista").textContent = anterior ? "Registros del " + fechaLarga(fecha) : "Registros de hoy";
     pintar({ ...data.resumen, fecha }, data.pendientes ?? { teTengo: 0, meTienes: 0 });
     cargarTotalMes();
+    valorBrutoMes();
     movimientosDia = data.movimientos;
     $("vaciar-dia").hidden = !data.movimientos.length;
     lista.innerHTML = "";
@@ -784,6 +785,50 @@ $("ver-pagado").addEventListener("click", abrirPagado);
 $("pagado-historico").addEventListener("click", abrirPagado);
 $("pg-ant").addEventListener("click", () => { mesPagos = moverMes(mesPagos, -1); cargarPagadoMes(); });
 $("pg-sig").addEventListener("click", () => { mesPagos = moverMes(mesPagos, 1); cargarPagadoMes(); });
+
+
+/* ---------- Ingresos brutos del mes ---------- */
+let mesBruto = hoy().slice(0, 7);
+const brutoDe = (r) => Number(r?.ingresos ?? Number(r?.efectivo || 0) + Number(r?.tarjeta || 0));
+async function datosBruto(mes) {
+  const res = await api("/api/jornadas?mes=" + mes);
+  if (!res.ok) throw new Error("No se pudo cargar");
+  const r = (await res.json()).resumen || {};
+  const d = { efectivo: Number(r.efectivo || 0), tarjeta: Number(r.tarjeta || 0), gastos: Number(r.gastos || 0), bruto: brutoDe(r) };
+  // La jornada abierta (la de hoy) también cuenta si es del mes pedido.
+  const dia = jornadaActual?.fecha || hoy();
+  if (resumen && dia.slice(0, 7) === mes) {
+    d.efectivo += Number(resumen.efectivo || 0); d.tarjeta += Number(resumen.tarjeta || 0);
+    d.gastos += Number(resumen.gastos || 0); d.bruto += brutoDe(resumen);
+  }
+  return d;
+}
+const r2 = (n) => Math.round(n * 100) / 100;
+async function pintarBruto() {
+  $("br-mes").textContent = mesNombre(mesBruto);
+  $("br-sig").disabled = mesBruto >= hoy().slice(0, 7);
+  try {
+    const d = await datosBruto(mesBruto);
+    $("br-total").textContent = fmt.format(r2(d.bruto));
+    const lista = $("br-detalle");
+    lista.innerHTML = "";
+    for (const [t, v] of [["Efectivo", d.efectivo], ["Tarjeta", d.tarjeta], ["Gastos (no restados)", d.gastos]]) {
+      const li = document.createElement("li");
+      const info = document.createElement("div"); info.className = "info"; info.textContent = t;
+      const m = document.createElement("span"); m.className = "monto"; m.textContent = fmt.format(r2(v));
+      li.append(info, m); lista.appendChild(li);
+    }
+  } catch (err) {
+    if (err.message === "sesion") $("dlg-bruto").close();
+    else $("br-total").textContent = "—";
+  }
+}
+async function valorBrutoMes() {
+  try { $("v-bruto").textContent = fmt.format(r2((await datosBruto(hoy().slice(0, 7))).bruto)); } catch { /* se conserva el último valor */ }
+}
+$("b-bruto").addEventListener("click", () => { mesBruto = hoy().slice(0, 7); $("dlg-bruto").showModal(); pintarBruto(); });
+$("br-ant").addEventListener("click", () => { mesBruto = moverMes(mesBruto, -1); pintarBruto(); });
+$("br-sig").addEventListener("click", () => { mesBruto = moverMes(mesBruto, 1); pintarBruto(); });
 
 /* ---------- Total del mes (acumulado con puesta a cero) ---------- */
 // Suma los totales de las jornadas registradas del mes y la jornada abierta (si es del mes).

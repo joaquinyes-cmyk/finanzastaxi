@@ -329,6 +329,10 @@
         <span class="nombre">📈 Total del mes</span><span class="valor" id="v-totalmes">0,00</span>
         <span class="hoy" id="h-totalmes"></span>
       </button>
+      <button class="boton totalmes" id="b-bruto" type="button" title="Lo cobrado en el mes antes de descontar gastos">
+        <span class="nombre">💰 Ingresos brutos del mes</span><span class="valor" id="v-bruto">0,00</span>
+        <span class="hoy">Efectivo + tarjeta, sin gastos</span>
+      </button>
       <button class="boton saldo" id="b-tetengo" data-saldo="teTengo" type="button" title="Pendiente acumulado hasta que se abone con «Te he pagado»">
         <span class="nombre">🤝 Te tengo <small class="marca-manual" hidden>✍️ manual</small></span><span class="valor" id="v-tetengo">0,00</span>
         <span class="hoy" id="h-tetengo">Hoy: 0,00</span>
@@ -475,6 +479,22 @@
       <h3 style="margin:0">Abonos y ajustes</h3>
       <ul id="lista-pagos"></ul>
       <div class="acciones"><button class="secundario" type="button" data-cerrar>Cerrar</button></div>
+    </div>
+  </dialog>
+
+  <dialog id="dlg-bruto">
+    <div class="contenido">
+      <h2>💰 Ingresos brutos</h2>
+      <div class="mes-nav">
+        <button type="button" class="chico secundario" id="br-ant" aria-label="Mes anterior">‹</button>
+        <strong id="br-mes"></strong>
+        <button type="button" class="chico secundario" id="br-sig" aria-label="Mes siguiente">›</button>
+      </div>
+      <p class="detalle">Cobrado en el mes, antes de gastos</p>
+      <p class="total-grande" id="br-total">0,00</p>
+      <ul class="historico" id="br-detalle"></ul>
+      <p class="detalle">Incluye las jornadas registradas y, en el mes actual, la de hoy.</p>
+      <div class="acciones"><button class="principal" type="button" data-cerrar>Cerrar</button></div>
     </div>
   </dialog>
 
